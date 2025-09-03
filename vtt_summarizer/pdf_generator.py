@@ -284,10 +284,13 @@ class PDFGenerator:
         try:
             if CONVERTER_COMMAND == 'pandoc':
                 # Pandoc with good PDF options
+                # Use relative paths since we're running from the markdown directory
+                markdown_filename = markdown_path.name
+                pdf_filename = pdf_path.name
                 cmd = [
                     'pandoc',
-                    str(markdown_path),
-                    '-o', str(pdf_path),
+                    markdown_filename,
+                    '-o', pdf_filename,
                     '--pdf-engine=pdflatex',
                     '--variable', 'geometry:margin=1in',
                     '--variable', 'fontsize=11pt',
@@ -321,7 +324,8 @@ class PDFGenerator:
                 return False
             
             self.logger.info(f"Running command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            # Run pandoc from the directory containing the markdown file so relative image paths work
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True, cwd=markdown_path.parent)
             
             if pdf_path.exists():
                 self.logger.info(f"Successfully converted markdown to PDF: {pdf_path}")

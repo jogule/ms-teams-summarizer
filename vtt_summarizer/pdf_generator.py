@@ -191,7 +191,7 @@ class PDFGenerator:
         doc.build(story)
     
     def _get_styles(self) -> Dict:
-        """Get PDF styles."""
+        """Get PDF styles that match rendered markdown appearance."""
         styles = getSampleStyleSheet()
         font_size = self.config.pdf_font_size
         
@@ -199,77 +199,180 @@ class PDFGenerator:
             'Title': ParagraphStyle(
                 'CustomTitle',
                 parent=styles['Title'],
-                fontSize=font_size + 8,
+                fontSize=font_size + 10,
                 spaceAfter=30,
-                alignment=TA_CENTER
+                spaceBefore=20,
+                alignment=TA_CENTER,
+                textColor=colors.darkblue,
+                fontName='Helvetica-Bold'
             ),
             'Heading1': ParagraphStyle(
                 'CustomHeading1',
                 parent=styles['Heading1'],
-                fontSize=font_size + 4,
-                spaceAfter=12,
-                spaceBefore=12,
-                textColor=colors.darkblue
+                fontSize=font_size + 6,
+                spaceAfter=8,
+                spaceBefore=16,
+                textColor=colors.black,
+                fontName='Helvetica-Bold',
+                borderWidth=0,
+                borderColor=colors.lightgrey,
+                borderPadding=2
             ),
             'Heading2': ParagraphStyle(
                 'CustomHeading2',
                 parent=styles['Heading2'],
+                fontSize=font_size + 4,
+                spaceAfter=6,
+                spaceBefore=12,
+                textColor=colors.black,
+                fontName='Helvetica-Bold'
+            ),
+            'Heading3': ParagraphStyle(
+                'CustomHeading3',
+                parent=styles['Heading2'],
                 fontSize=font_size + 2,
-                spaceAfter=8,
-                spaceBefore=10,
-                textColor=colors.darkgreen
+                spaceAfter=4,
+                spaceBefore=8,
+                textColor=colors.black,
+                fontName='Helvetica-Bold'
             ),
             'Normal': ParagraphStyle(
                 'CustomNormal',
                 parent=styles['Normal'],
                 fontSize=font_size,
+                spaceAfter=0,
+                spaceBefore=0,
+                alignment=TA_LEFT,
+                fontName='Helvetica',
+                leading=font_size + 3  # Line spacing
+            ),
+            'BulletList': ParagraphStyle(
+                'BulletList',
+                parent=styles['Normal'],
+                fontSize=font_size,
+                leftIndent=18,
+                bulletIndent=12,
+                spaceAfter=2,
+                spaceBefore=1,
+                alignment=TA_LEFT,
+                fontName='Helvetica',
+                leading=font_size + 2
+            ),
+            'NumberedList': ParagraphStyle(
+                'NumberedList',
+                parent=styles['Normal'],
+                fontSize=font_size,
+                leftIndent=18,
+                spaceAfter=2,
+                spaceBefore=1,
+                alignment=TA_LEFT,
+                fontName='Helvetica',
+                leading=font_size + 2
+            ),
+            'Code': ParagraphStyle(
+                'Code',
+                parent=styles['Normal'],
+                fontSize=font_size - 1,
+                fontName='Courier',
+                backgroundColor=colors.lightgrey,
+                borderWidth=1,
+                borderColor=colors.grey,
+                borderPadding=6,
+                leftIndent=12,
+                rightIndent=12,
                 spaceAfter=6,
-                alignment=TA_JUSTIFY
+                spaceBefore=6
+            ),
+            'Quote': ParagraphStyle(
+                'Quote',
+                parent=styles['Normal'],
+                fontSize=font_size,
+                fontName='Helvetica-Oblique',
+                leftIndent=24,
+                rightIndent=12,
+                borderColor=colors.lightgrey,
+                borderWidth=2,
+                borderPadding=8,
+                spaceAfter=8,
+                spaceBefore=8,
+                textColor=colors.darkgrey
             ),
             'TOC': ParagraphStyle(
                 'TOC',
                 parent=styles['Normal'],
                 fontSize=font_size,
                 leftIndent=20,
-                spaceAfter=4
+                spaceAfter=4,
+                fontName='Helvetica'
             )
         }
         
         return custom_styles
     
     def _create_title_page(self, styles: Dict, summaries: List[Dict]) -> List:
-        """Create title page content."""
+        """Create professional title page content."""
         content = []
+        
+        # Add some top spacing
+        content.append(Spacer(1, 1.5*inch))
         
         # Main title
         content.append(Paragraph(self.config.pdf_title, styles['Title']))
-        content.append(Spacer(1, 0.5*inch))
+        content.append(Spacer(1, 0.3*inch))
         
-        # Summary statistics
+        # Subtitle
+        subtitle = f"Comprehensive Analysis of {len(summaries)} Meeting Sessions"
+        content.append(Paragraph(subtitle, styles['Heading2']))
+        content.append(Spacer(1, 0.8*inch))
+        
+        # Summary statistics in a nice table
         stats_data = [
-            ['Report Generated:', datetime.now().strftime('%B %d, %Y at %I:%M %p')],
-            ['Total Meetings:', str(len(summaries))],
-            ['Date Range:', self._get_date_range(summaries)],
+            ['📅 Report Generated:', datetime.now().strftime('%B %d, %Y at %I:%M %p')],
+            ['📊 Total Meetings:', str(len(summaries))],
+            ['📆 Date Range:', self._get_date_range(summaries)],
+            ['📄 Document Pages:', 'Multiple chapters with analysis'],
         ]
         
-        stats_table = Table(stats_data, colWidths=[2*inch, 3*inch])
+        stats_table = Table(stats_data, colWidths=[2.2*inch, 3.5*inch])
         stats_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), self.config.pdf_font_size),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ]))
         
         content.append(stats_table)
-        content.append(Spacer(1, 1*inch))
+        content.append(Spacer(1, 0.8*inch))
         
-        # Meeting topics overview
-        content.append(Paragraph("Meeting Topics Covered", styles['Heading2']))
-        for summary in summaries:
+        # Meeting topics overview with better formatting
+        content.append(Paragraph("📋 Meeting Sessions Included", styles['Heading2']))
+        content.append(Spacer(1, 0.2*inch))
+        
+        for i, summary in enumerate(summaries, 1):
             topic = summary.get('meeting_topic', summary.get('folder_name', 'Unknown'))
             date = summary.get('meeting_date', 'Date unknown')
-            content.append(Paragraph(f"• {topic} ({date})", styles['Normal']))
+            duration = summary.get('duration', 'Duration unknown')
+            
+            meeting_info = f"{i}. <b>{topic}</b>"
+            if date != 'Date unknown':
+                meeting_info += f" • {date}"
+            if duration != 'Duration unknown':
+                meeting_info += f" • {duration}"
+                
+            content.append(Paragraph(meeting_info, styles['BulletList']))
+            content.append(Spacer(1, 2))
+        
+        content.append(Spacer(1, 0.5*inch))
+        
+        # Footer note
+        footer_note = ("<i>This report contains AI-generated summaries and analysis. "
+                      "All content is derived from meeting transcripts and recordings.</i>")
+        content.append(Paragraph(footer_note, styles['Normal']))
         
         return content
     
@@ -346,7 +449,10 @@ class PDFGenerator:
         summary_path = Path(summary['summary_path'])
         if summary_path.exists():
             summary_content = safe_read_file(summary_path)
-            content.extend(self._convert_markdown_to_pdf_content(summary_content, styles))
+            
+            # Extract just the summary section (skip the header metadata)
+            clean_content = self._extract_summary_section(summary_content)
+            content.extend(self._convert_markdown_to_pdf_content(clean_content, styles))
             
             # Add keyframes if enabled and available
             if self.config.pdf_include_keyframes:
@@ -358,46 +464,249 @@ class PDFGenerator:
         return content
     
     def _convert_markdown_to_pdf_content(self, markdown_text: str, styles: Dict) -> List:
-        """Convert markdown text to PDF content elements."""
+        """Convert markdown text to PDF content elements with proper formatting."""
         content = []
         lines = markdown_text.split('\n')
         
-        for line in lines:
-            line = line.strip()
+        i = 0
+        while i < len(lines):
+            line = lines[i].rstrip()
+            
+            # Skip empty lines but add spacing
             if not line:
                 content.append(Spacer(1, 6))
+                i += 1
                 continue
             
-            # Headers
+            # Skip certain metadata lines that are already handled elsewhere
+            if (line.startswith('*This summary was generated') or 
+                line.startswith('---') or
+                line.startswith('**Date Generated**') or
+                line.startswith('**Duration**') or
+                line.startswith('**Transcript Words**') or
+                line.startswith('**Source File**')):
+                i += 1
+                continue
+            
+            # Headers with proper spacing
             if line.startswith('# '):
-                content.append(Paragraph(line[2:], styles['Heading1']))
+                content.append(Spacer(1, 12))
+                content.append(Paragraph(self._clean_markdown_formatting(line[2:]), styles['Heading1']))
+                content.append(Spacer(1, 6))
             elif line.startswith('## '):
-                content.append(Paragraph(line[3:], styles['Heading2']))
+                content.append(Spacer(1, 10))
+                content.append(Paragraph(self._clean_markdown_formatting(line[3:]), styles['Heading2']))
+                content.append(Spacer(1, 4))
             elif line.startswith('### '):
-                content.append(Paragraph(f"<b>{line[4:]}</b>", styles['Normal']))
-            # Bold text
-            elif line.startswith('**') and line.endswith('**'):
-                content.append(Paragraph(f"<b>{line[2:-2]}</b>", styles['Normal']))
-            # List items
-            elif line.startswith('- ') or line.startswith('* '):
-                content.append(Paragraph(f"• {line[2:]}", styles['Normal']))
+                content.append(Spacer(1, 8))
+                content.append(Paragraph(f"<b>{self._clean_markdown_formatting(line[4:])}</b>", styles['Heading3']))
+                content.append(Spacer(1, 2))
+            elif line.startswith('#### '):
+                content.append(Spacer(1, 6))
+                content.append(Paragraph(f"<b><i>{self._clean_markdown_formatting(line[5:])}</i></b>", styles['Normal']))
+                
+            # Multi-line lists (collect consecutive list items)
+            elif line.startswith('- ') or line.startswith('* ') or line.startswith('+ '):
+                list_items = []
+                while i < len(lines) and (lines[i].startswith('- ') or lines[i].startswith('* ') or lines[i].startswith('+ ') or lines[i].startswith('  ')):
+                    current_line = lines[i].rstrip()
+                    if current_line.startswith(('- ', '* ', '+ ')):
+                        list_items.append(current_line[2:])
+                    elif current_line.startswith('  ') and list_items:  # Continuation of previous item
+                        list_items[-1] += ' ' + current_line.strip()
+                    i += 1
+                
+                # Add list items
+                for item in list_items:
+                    clean_item = self._clean_markdown_formatting(item)
+                    content.append(Paragraph(f"• {clean_item}", styles['BulletList']))
+                i -= 1  # Adjust because we'll increment at the end of the loop
+                
+            # Numbered lists
+            elif self._is_numbered_list_item(line):
+                list_items = []
+                while i < len(lines) and (self._is_numbered_list_item(lines[i]) or lines[i].startswith('  ')):
+                    current_line = lines[i].rstrip()
+                    if self._is_numbered_list_item(current_line):
+                        # Extract the number and content
+                        parts = current_line.split('.', 1)
+                        if len(parts) == 2:
+                            list_items.append((parts[0].strip(), parts[1].strip()))
+                    elif current_line.startswith('  ') and list_items:  # Continuation
+                        list_items[-1] = (list_items[-1][0], list_items[-1][1] + ' ' + current_line.strip())
+                    i += 1
+                
+                # Add numbered list items
+                for num, item in list_items:
+                    clean_item = self._clean_markdown_formatting(item)
+                    content.append(Paragraph(f"{num}. {clean_item}", styles['NumberedList']))
+                i -= 1
+                
+            # Code blocks
+            elif line.startswith('```'):
+                code_lines = []
+                i += 1
+                while i < len(lines) and not lines[i].startswith('```'):
+                    code_lines.append(lines[i])
+                    i += 1
+                if code_lines:
+                    code_text = '\n'.join(code_lines)
+                    content.append(Paragraph(f"<font name='Courier'>{code_text}</font>", styles['Code']))
+                    content.append(Spacer(1, 6))
+                    
+            # Block quotes
+            elif line.startswith('> '):
+                quote_lines = []
+                while i < len(lines) and lines[i].startswith('> '):
+                    quote_lines.append(lines[i][2:])
+                    i += 1
+                quote_text = ' '.join(quote_lines)
+                clean_quote = self._clean_markdown_formatting(quote_text)
+                content.append(Paragraph(f"<i>\"{clean_quote}\"</i>", styles['Quote']))
+                content.append(Spacer(1, 6))
+                i -= 1
+                
+            # Tables (basic support)
+            elif '|' in line and not line.startswith('!'):
+                table_lines = []
+                while i < len(lines) and '|' in lines[i] and not lines[i].startswith('!'):
+                    table_lines.append(lines[i])
+                    i += 1
+                if len(table_lines) > 1:  # Skip single-line tables
+                    table_content = self._create_table_from_markdown(table_lines, styles)
+                    if table_content:
+                        content.extend(table_content)
+                i -= 1
+                
             # Regular paragraphs
-            elif not line.startswith('!') and not line.startswith('['):  # Skip image refs and links
-                # Clean up markdown formatting
-                clean_line = self._clean_markdown_formatting(line)
-                content.append(Paragraph(clean_line, styles['Normal']))
+            elif not line.startswith('!') and not line.startswith('[') and not line.startswith('<'):
+                # Collect multi-line paragraphs
+                paragraph_lines = [line]
+                i += 1
+                while (i < len(lines) and 
+                       lines[i].strip() and 
+                       not lines[i].startswith('#') and 
+                       not lines[i].startswith('-') and 
+                       not lines[i].startswith('*') and 
+                       not lines[i].startswith('+') and 
+                       not self._is_numbered_list_item(lines[i]) and
+                       not lines[i].startswith('```') and
+                       not lines[i].startswith('> ') and
+                       '|' not in lines[i]):
+                    paragraph_lines.append(lines[i].strip())
+                    i += 1
+                
+                paragraph_text = ' '.join(paragraph_lines)
+                clean_paragraph = self._clean_markdown_formatting(paragraph_text)
+                if clean_paragraph.strip():  # Only add non-empty paragraphs
+                    content.append(Paragraph(clean_paragraph, styles['Normal']))
+                    content.append(Spacer(1, 3))
+                i -= 1
+            
+            i += 1
         
         return content
     
     def _clean_markdown_formatting(self, text: str) -> str:
-        """Clean markdown formatting for PDF."""
+        """Clean markdown formatting for PDF with proper HTML tags."""
         # Convert **bold** to <b>bold</b>
         text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
-        # Convert *italic* to <i>italic</i>
-        text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+        # Convert *italic* to <i>italic</i> (but not if it's already in bold)
+        text = re.sub(r'(?<!\*)\*([^*]+?)\*(?!\*)', r'<i>\1</i>', text)
+        # Convert `inline code` to <font name='Courier'>code</font>
+        text = re.sub(r'`([^`]+)`', r'<font name="Courier">\1</font>', text)
         # Remove markdown links but keep text
         text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
-        return text
+        # Convert --- to em dash
+        text = text.replace('---', '—')
+        # Convert -- to en dash
+        text = text.replace('--', '–')
+        # Clean up any double spaces
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+    
+    def _is_numbered_list_item(self, line: str) -> bool:
+        """Check if line is a numbered list item."""
+        return bool(re.match(r'^\d+\.\s+', line.strip()))
+    
+    def _create_table_from_markdown(self, table_lines: List[str], styles: Dict) -> List:
+        """Create a table from markdown table lines."""
+        if len(table_lines) < 2:
+            return []
+        
+        # Parse table data
+        table_data = []
+        for line in table_lines:
+            if '|' in line:
+                # Split by | and clean up
+                cells = [cell.strip() for cell in line.split('|')]
+                # Remove empty first/last cells if they exist
+                if cells and not cells[0]:
+                    cells = cells[1:]
+                if cells and not cells[-1]:
+                    cells = cells[:-1]
+                # Skip separator lines (lines with mostly dashes)
+                if not all(cell.replace('-', '').replace(':', '').replace(' ', '') == '' for cell in cells):
+                    # Clean markdown formatting in cells
+                    clean_cells = [self._clean_markdown_formatting(cell) for cell in cells]
+                    table_data.append(clean_cells)
+        
+        if len(table_data) < 1:
+            return []
+        
+        # Create table
+        try:
+            table = Table(table_data)
+            table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Header row
+                ('FONTSIZE', (0, 0), (-1, -1), self.config.pdf_font_size - 1),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),  # Header background
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            return [table, Spacer(1, 6)]
+        except:
+            # If table creation fails, return as regular paragraphs
+            content = []
+            for row in table_data:
+                content.append(Paragraph(' | '.join(row), styles['Normal']))
+            return content
+    
+    def _extract_summary_section(self, markdown_text: str) -> str:
+        """Extract just the summary content, skipping metadata headers."""
+        lines = markdown_text.split('\n')
+        
+        # Find where the actual summary starts (after meeting information)
+        summary_start = 0
+        for i, line in enumerate(lines):
+            # Look for ## Summary or similar pattern
+            if (line.strip().startswith('## Summary') or 
+                line.strip().startswith('# Summary') or
+                (i > 10 and line.strip().startswith('##') and 'summary' in line.lower())):
+                summary_start = i
+                break
+            # Alternative: if we find content that looks like summary content
+            elif (i > 5 and line.strip() and 
+                  not line.startswith('#') and 
+                  not line.startswith('**') and 
+                  not line.startswith('-') and
+                  not line.startswith('*This summary was generated') and
+                  len(line.strip()) > 50):
+                summary_start = max(0, i - 1)  # Include a bit of context
+                break
+        
+        # If no clear summary section found, return everything after first few metadata lines
+        if summary_start == 0:
+            for i, line in enumerate(lines):
+                if i > 8:  # Skip first several lines which are usually metadata
+                    summary_start = i
+                    break
+        
+        return '\n'.join(lines[summary_start:])
     
     def _add_keyframes_to_pdf(self, summary_content: str, summaries_path: Path, styles: Dict) -> List:
         """Add keyframes to PDF if they exist."""

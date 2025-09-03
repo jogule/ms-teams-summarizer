@@ -1,0 +1,20 @@
+aws:
+  region: "us-east-1"
+  bedrock:
+    model_id: "anthropic.claude-3-5-sonnet-20240620-v1:0"  # Claude 3.5 Sonnet v1
+    max_tokens: 4000
+    temperature: 0.1
+
+processing:
+  input_folder: "walkthroughs"
+  output_filename: "summary.md"
+  
+summary:
+  style: "comprehensive"  # Options: brief, comprehensive, detailed
+  include_timestamps: true
+  include_participants: true
+  include_action_items: true
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

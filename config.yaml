@@ -27,11 +27,11 @@ keyframes:
   # Adjust based on your typical meeting patterns
   delays:
     screen_sharing: 20.0        # "I will share my screen" -> wait for actual sharing
-    screen_sharing_immediate: 0.0  # "I'm sharing my screen" -> already happening  
-    demonstrations: 2.0        # "Let me show you" -> wait for demo to start
-    technical: 1.0            # Technical discussions -> small delay for context
-    transitions: 2.0          # "Moving on to" -> wait for transition to complete
-    important: 0.5            # Important points -> small delay for emphasis
+    screen_sharing_immediate: 1.0  # "I'm sharing my screen" -> already happening  
+    demonstrations: 5.0        # "Let me show you" -> wait for demo to start
+    technical: 3.0            # Technical discussions -> small delay for context
+    transitions: 5.0          # "Moving on to" -> wait for transition to complete
+    important: 1.0            # Important points -> small delay for emphasis
     questions: 1.0            # Q&A moments -> wait for response context
 
 logging:

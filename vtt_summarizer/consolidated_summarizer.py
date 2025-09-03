@@ -535,11 +535,14 @@ class ConsolidatedSummarizer:
             global_summary_filename = self._format_filename(self.config.global_summary_filename)
             global_summary_path = summaries_path / global_summary_filename
             
-            # Filter successful individual summaries for PDF
-            successful_summaries = [
-                result for result in individual_results 
-                if result.get('status') == 'success'
-            ]
+            # Filter successful individual summaries for PDF and ensure they have folder_name
+            successful_summaries = []
+            for result in individual_results:
+                if result.get('status') == 'success':
+                    # Ensure the result has folder_name (use 'folder' if 'folder_name' is missing)
+                    if 'folder_name' not in result and 'folder' in result:
+                        result['folder_name'] = result['folder']
+                    successful_summaries.append(result)
             
             if not successful_summaries:
                 self.logger.warning("No successful individual summaries found for PDF generation")

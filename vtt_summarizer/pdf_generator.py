@@ -354,7 +354,8 @@ class PDFGenerator:
         content.append(Spacer(1, 0.2*inch))
         
         for i, summary in enumerate(summaries, 1):
-            topic = summary.get('meeting_topic', summary.get('folder_name', 'Unknown'))
+            # Try multiple ways to get meeting topic
+            topic = self._extract_meeting_topic(summary)
             date = summary.get('meeting_date', 'Date unknown')
             duration = summary.get('duration', 'Duration unknown')
             
@@ -418,7 +419,7 @@ class PDFGenerator:
         content = []
         
         # Chapter heading
-        topic = summary.get('meeting_topic', summary.get('folder_name', 'Unknown'))
+        topic = self._extract_meeting_topic(summary)
         content.append(Paragraph(f"Chapter {chapter_num}: {topic}", styles['Heading1']))
         
         # Meeting metadata
@@ -707,6 +708,86 @@ class PDFGenerator:
                     break
         
         return '\n'.join(lines[summary_start:])
+    
+    def _extract_meeting_topic(self, summary: Dict) -> str:
+        """Extract meeting topic from summary data with fallbacks."""
+        # Try different sources for meeting topic
+        
+        # 1. Direct meeting_topic field
+        if summary.get('meeting_topic') and summary['meeting_topic'] != 'Unknown':
+            return summary['meeting_topic']
+        
+        # 2. Parse folder name for meaningful content
+        folder_name = summary.get('folder_name', '')
+        if folder_name and folder_name != 'Unknown':
+            # Clean up folder name - remove dates and make readable
+            topic = self._clean_folder_name_for_topic(folder_name)
+            if topic != 'Unknown':
+                return topic
+        
+        # 3. Try to extract from summary file content
+        summary_path = summary.get('summary_path')
+        if summary_path:
+            try:
+                content = safe_read_file(Path(summary_path))
+                topic = self._extract_topic_from_content(content)
+                if topic:
+                    return topic
+            except:
+                pass
+        
+        # 4. Fallback to folder name or default
+        return folder_name if folder_name else 'Meeting Session'
+    
+    def _clean_folder_name_for_topic(self, folder_name: str) -> str:
+        """Clean folder name to extract meaningful topic."""
+        # Remove common date patterns
+        import re
+        
+        # Remove date patterns like 20250815, 2025-08-15, etc.
+        cleaned = re.sub(r'\d{8}', '', folder_name)  # 20250815
+        cleaned = re.sub(r'\d{4}-\d{2}-\d{2}', '', cleaned)  # 2025-08-15
+        cleaned = re.sub(r'\d{2}-\d{2}-\d{4}', '', cleaned)  # 15-08-2025
+        cleaned = re.sub(r'\d{1,2}/\d{1,2}/\d{4}', '', cleaned)  # 8/15/2025
+        
+        # Remove leading/trailing separators
+        cleaned = re.sub(r'^[-_\s]+', '', cleaned)
+        cleaned = re.sub(r'[-_\s]+$', '', cleaned)
+        
+        # Replace underscores and multiple spaces with single spaces
+        cleaned = re.sub(r'[-_]+', ' ', cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        
+        # Capitalize words
+        cleaned = cleaned.strip().title()
+        
+        return cleaned if cleaned and len(cleaned) > 2 else 'Meeting Session'
+    
+    def _extract_topic_from_content(self, content: str) -> str:
+        """Extract topic from summary content."""
+        lines = content.split('\n')
+        
+        # Look for title line (first non-metadata line that looks like a title)
+        for line in lines[:10]:  # Check first 10 lines
+            line = line.strip()
+            if (line and 
+                not line.startswith('#') and 
+                not line.startswith('**') and 
+                not line.startswith('-') and 
+                not line.startswith('*This summary') and
+                len(line) > 10 and 
+                len(line) < 100 and
+                not ':' in line[-20:]):  # Avoid lines ending with colons (likely metadata)
+                # Clean the line
+                topic = re.sub(r'[*_`]', '', line)  # Remove markdown
+                topic = topic.replace(' - Meeting Summary', '')
+                topic = topic.replace(' Meeting Summary', '')
+                topic = topic.replace('Meeting Summary', '')
+                topic = topic.strip()
+                if len(topic) > 5:
+                    return topic
+        
+        return None
     
     def _add_keyframes_to_pdf(self, summary_content: str, summaries_path: Path, styles: Dict) -> List:
         """Add keyframes to PDF if they exist."""

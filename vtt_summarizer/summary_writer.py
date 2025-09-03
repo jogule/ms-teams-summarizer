@@ -46,9 +46,7 @@ class SummaryWriter:
         
         content_parts.extend([
             "## Summary\n",
-            summary,
-            "\n---",
-            "*This summary was generated automatically using AWS Bedrock and Claude AI.*"
+            summary
         ])
         
         content = "\n".join(content_parts)
@@ -114,9 +112,7 @@ class SummaryWriter:
             f"- **Meeting Topics**: {', '.join(meeting_topics)}",
             date_range_text,
             "## Analysis\n",
-            content,
-            "\n---",
-            "*This global summary was generated automatically by analyzing all individual meeting summaries using AWS Bedrock and Claude AI.*"
+            content
         ]
         
         # Filter out empty parts and join

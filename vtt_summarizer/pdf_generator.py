@@ -370,11 +370,6 @@ class PDFGenerator:
         
         content.append(Spacer(1, 0.5*inch))
         
-        # Footer note
-        footer_note = ("<i>This report contains AI-generated summaries and analysis. "
-                      "All content is derived from meeting transcripts and recordings.</i>")
-        content.append(Paragraph(footer_note, styles['Normal']))
-        
         return content
     
     def _create_table_of_contents(self, styles: Dict, summaries: List[Dict]) -> List:

@@ -9,6 +9,7 @@ from .vtt_parser import VTTParser
 from .bedrock_client import BedrockClient
 from .global_summarizer import GlobalSummarizer
 from .summary_writer import SummaryWriter
+from .keyframe_extractor import KeyframeExtractor
 from .utils import (
     parse_folder_name,
     extract_summary_info,
@@ -24,18 +25,29 @@ from .utils import (
 class ConsolidatedSummarizer:
     """Handles both individual VTT processing and global summary generation."""
     
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, enable_keyframes: bool = True, max_keyframes: int = 5):
         """
         Initialize the Consolidated Summarizer.
         
         Args:
             config: Configuration object
+            enable_keyframes: Whether to enable keyframe extraction
+            max_keyframes: Maximum number of keyframes to extract per video
         """
         self.config = config
+        self.enable_keyframes = enable_keyframes
+        self.max_keyframes = max_keyframes
         self.vtt_parser = VTTParser()
         self.bedrock_client = BedrockClient(config)
         self.global_summarizer = GlobalSummarizer(config)
         self.summary_writer = SummaryWriter()
+        
+        # Initialize keyframe extractor only if enabled
+        if self.enable_keyframes:
+            self.keyframe_extractor = KeyframeExtractor(max_frames=max_keyframes, min_relevance_score=0.3)
+        else:
+            self.keyframe_extractor = None
+            
         self.logger = setup_module_logger(__name__)
         
         self.logger.info("Consolidated Summarizer initialized")
@@ -189,17 +201,44 @@ class ConsolidatedSummarizer:
             }
         
         try:
-            # Extract transcript
+            # Extract transcript and segments
             self.logger.info(f"Parsing VTT file: {vtt_file.name}")
             start_time = time.time()
             
             transcript = self.vtt_parser.extract_full_transcript(str(vtt_file))
+            segments = self.vtt_parser.parse_file(str(vtt_file))  # Get segments for keyframe extraction
             metadata = self.vtt_parser.get_transcript_metadata(str(vtt_file))
             
             parse_time = time.time() - start_time
             self.logger.info(f"VTT parsing completed in {parse_time:.2f}s")
             self.logger.info(f"Transcript stats: {metadata['word_count']} words, "
                            f"{metadata['duration_formatted']} duration")
+            
+            # Extract keyframes if enabled and video file exists
+            keyframes = []
+            keyframe_time = 0
+            
+            if self.enable_keyframes:
+                video_file = self._find_video_file(folder_path)
+                
+                if video_file:
+                    self.logger.info(f"Extracting keyframes from: {video_file.name}")
+                    keyframe_start_time = time.time()
+                    
+                    images_dir = summaries_path / "images"
+                    base_filename = f"{folder_name}_summary"
+                    
+                    keyframes = self.keyframe_extractor.extract_keyframes(
+                        str(video_file), segments, str(images_dir), base_filename
+                    )
+                    
+                    keyframe_time = time.time() - keyframe_start_time
+                    self.logger.info(f"Keyframe extraction completed in {keyframe_time:.2f}s, "
+                                   f"extracted {len(keyframes)} frames")
+                else:
+                    self.logger.info("No video file found, skipping keyframe extraction")
+            else:
+                self.logger.info("Keyframe extraction disabled")
             
             # Generate meeting context
             meeting_context = extract_meeting_context(folder_name, metadata)
@@ -213,8 +252,8 @@ class ConsolidatedSummarizer:
             generation_time = time.time() - start_time
             self.logger.info(f"Summary generation completed in {generation_time:.2f}s")
             
-            # Save summary
-            self.summary_writer.write_individual_summary(summary_path, summary, metadata, folder_name)
+            # Save summary with keyframes
+            self.summary_writer.write_individual_summary(summary_path, summary, metadata, folder_name, keyframes)
             
             self.logger.info(f"Successfully processed {folder_name}")
             
@@ -225,9 +264,11 @@ class ConsolidatedSummarizer:
                 "transcript_stats": metadata,
                 "processing_time": {
                     "parse_time": round(parse_time, 2),
+                    "keyframe_time": round(keyframe_time, 2),
                     "generation_time": round(generation_time, 2),
-                    "total_time": round(parse_time + generation_time, 2)
+                    "total_time": round(parse_time + keyframe_time + generation_time, 2)
                 },
+                "keyframes_extracted": len(keyframes),
                 "timestamp": get_iso_timestamp()
             }
             
@@ -374,9 +415,26 @@ class ConsolidatedSummarizer:
         
         return vtt_folders
     
-    
-    
-    
+    def _find_video_file(self, folder_path: Path) -> Optional[Path]:
+        """
+        Find video file (MP4) in the given folder.
+        
+        Args:
+            folder_path: Path to the folder to search
+            
+        Returns:
+            Path to video file or None if not found
+        """
+        # Look for common video file extensions
+        video_extensions = ['*.mp4', '*.mov', '*.avi', '*.mkv']
+        
+        for pattern in video_extensions:
+            video_files = list(folder_path.glob(pattern))
+            if video_files:
+                # Return the first video file found
+                return video_files[0]
+        
+        return None
     
     def _log_final_consolidated_results(self, results: Dict) -> None:
         """Log final consolidated processing results."""

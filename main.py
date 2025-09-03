@@ -85,6 +85,18 @@ def print_results(results):
     print(f"   ⏭️  Skipped: {skipped}")
     print(f"   ❌ Errors: {errors}")
     
+    # Keyframe statistics
+    total_keyframes = 0
+    processed_results = [r for r in individual.get('results', []) if r.get('status') == 'success']
+    for result in processed_results:
+        total_keyframes += result.get('keyframes_extracted', 0)
+    
+    if total_keyframes > 0:
+        print(f"\n🎥 Keyframes:")
+        print(f"   🖼️  Total extracted: {total_keyframes}")
+        if processed > 0:
+            print(f"   📊 Average per summary: {total_keyframes/processed:.1f}")
+    
     # Global summary
     print(f"\n🌍 Global Summary:")
     if global_result.get('status') == 'success':
@@ -116,7 +128,8 @@ Examples:
   python3 main.py                 # Process only new files (minimal logging)
   python3 main.py --force         # Force overwrite all existing summaries
   python3 main.py --verbose       # Process with detailed logging
-  python3 main.py --force --verbose # Force overwrite with detailed logging
+  python3 main.py --no-keyframes  # Skip keyframe extraction
+  python3 main.py --max-keyframes 3  # Extract max 3 keyframes per video
         """
     )
     
@@ -130,6 +143,19 @@ Examples:
         '--verbose', 
         action='store_true',
         help='Enable verbose logging output'
+    )
+    
+    parser.add_argument(
+        '--no-keyframes',
+        action='store_true',
+        help='Skip keyframe extraction from videos'
+    )
+    
+    parser.add_argument(
+        '--max-keyframes',
+        type=int,
+        default=5,
+        help='Maximum number of keyframes to extract per video (default: 5)'
     )
     
     return parser.parse_args()
@@ -159,13 +185,21 @@ def main():
             print(f"⚡ Force mode: ON (will overwrite existing files)")
         if args.verbose:
             print(f"🔍 Verbose mode: ON (detailed logging enabled)")
+        if args.no_keyframes:
+            print(f"🎥 Keyframes: DISABLED")
+        else:
+            print(f"🎥 Keyframes: ENABLED (max {args.max_keyframes} per video)")
         print()
         
         # Initialize and run summarizer
         print("🚀 Starting VTT summarization...")
         print("   📄 Processing individual VTT files...")
         
-        summarizer = ConsolidatedSummarizer(config)
+        summarizer = ConsolidatedSummarizer(
+            config,
+            enable_keyframes=not args.no_keyframes,
+            max_keyframes=args.max_keyframes
+        )
         results = summarizer.summarize_all(
             summaries_folder="summaries",
             force_overwrite=args.force

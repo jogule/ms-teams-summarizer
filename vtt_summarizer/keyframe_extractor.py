@@ -38,7 +38,8 @@ class KeyframeExtractor:
     """Extracts relevant keyframes from video files based on VTT transcript analysis."""
     
     def __init__(self, max_frames: int = 5, min_relevance_score: float = 0.3, 
-                 custom_delays: Dict[str, float] = None):
+                 custom_delays: Dict[str, float] = None, image_max_width: int = 1200,
+                 image_quality: int = 85):
         """
         Initialize keyframe extractor.
         
@@ -46,9 +47,13 @@ class KeyframeExtractor:
             max_frames: Maximum number of keyframes to extract per video
             min_relevance_score: Minimum relevance score to consider a frame
             custom_delays: Optional custom delay overrides for different categories
+            image_max_width: Maximum width for optimized images
+            image_quality: Quality setting for image optimization
         """
         self.max_frames = max_frames
         self.min_relevance_score = min_relevance_score
+        self.image_max_width = image_max_width
+        self.image_quality = image_quality
         self.logger = setup_module_logger(__name__)
         
         # Keywords that indicate potentially relevant moments with intelligent timing delays.
@@ -357,22 +362,20 @@ class KeyframeExtractor:
         
         return extracted_frames
     
-    def _optimize_image(self, image_path: str, max_width: int = 1200, quality: int = 85):
+    def _optimize_image(self, image_path: str):
         """
-        Optimize image size and quality for web display.
+        Optimize image size and quality for web display using configured settings.
         
         Args:
             image_path: Path to the image file
-            max_width: Maximum width for the image
-            quality: JPEG quality (if converting to JPEG)
         """
         try:
             with Image.open(image_path) as img:
                 # Calculate new dimensions while maintaining aspect ratio
-                if img.width > max_width:
-                    ratio = max_width / img.width
+                if img.width > self.image_max_width:
+                    ratio = self.image_max_width / img.width
                     new_height = int(img.height * ratio)
-                    img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+                    img = img.resize((self.image_max_width, new_height), Image.Resampling.LANCZOS)
                 
                 # Save optimized image (keep as PNG for quality)
                 img.save(image_path, 'PNG', optimize=True)

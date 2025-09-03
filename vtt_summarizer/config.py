@@ -95,6 +95,46 @@ class Config:
         return self._config.get('logging', {}).get('format', 
                                '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
+    # Keyframe configuration properties
+    @property
+    def keyframes_enabled(self) -> bool:
+        """Get whether keyframe extraction is enabled."""
+        return self._config.get('keyframes', {}).get('enabled', True)
+    
+    @property
+    def keyframes_max_frames(self) -> int:
+        """Get maximum number of keyframes to extract per video."""
+        return self._config.get('keyframes', {}).get('max_frames', 5)
+    
+    @property
+    def keyframes_min_relevance_score(self) -> float:
+        """Get minimum relevance score for keyframe candidates."""
+        return self._config.get('keyframes', {}).get('min_relevance_score', 0.3)
+    
+    @property
+    def keyframes_image_max_width(self) -> int:
+        """Get maximum width for optimized keyframe images."""
+        return self._config.get('keyframes', {}).get('image_max_width', 1200)
+    
+    @property
+    def keyframes_image_quality(self) -> int:
+        """Get image quality for keyframe optimization."""
+        return self._config.get('keyframes', {}).get('image_quality', 85)
+    
+    @property
+    def keyframes_delays(self) -> Dict[str, float]:
+        """Get intelligent delay settings for different content types."""
+        default_delays = {
+            'screen_sharing': 3.0,
+            'screen_sharing_immediate': 0.0,
+            'demonstrations': 2.0,
+            'technical': 1.0,
+            'transitions': 2.0,
+            'important': 0.5,
+            'questions': 1.0
+        }
+        return self._config.get('keyframes', {}).get('delays', default_delays)
+    
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value by dot-notation key (e.g., 'aws.region')."""
         keys = key.split('.')

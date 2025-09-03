@@ -44,7 +44,15 @@ class ConsolidatedSummarizer:
         
         # Initialize keyframe extractor only if enabled
         if self.enable_keyframes:
-            self.keyframe_extractor = KeyframeExtractor(max_frames=max_keyframes, min_relevance_score=0.3)
+            # Use configuration values with CLI overrides
+            config_delays = self.config.keyframes_delays
+            self.keyframe_extractor = KeyframeExtractor(
+                max_frames=max_keyframes,
+                min_relevance_score=self.config.keyframes_min_relevance_score,
+                custom_delays=config_delays,
+                image_max_width=self.config.keyframes_image_max_width,
+                image_quality=self.config.keyframes_image_quality
+            )
         else:
             self.keyframe_extractor = None
             

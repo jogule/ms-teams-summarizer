@@ -15,6 +15,25 @@ summary:
   include_participants: true
   include_action_items: true
 
+keyframes:
+  enabled: true              # Enable/disable keyframe extraction globally
+  max_frames: 5              # Maximum keyframes per video (can be overridden by CLI)
+  min_relevance_score: 0.3   # Minimum score threshold for keyframe candidates
+  image_max_width: 1200      # Maximum width for optimized keyframe images (px)
+  image_quality: 100          # Image quality for optimization (0-100)
+  
+  # Intelligent delay settings (in seconds)
+  # These delays help capture the actual moment rather than just announcements
+  # Adjust based on your typical meeting patterns
+  delays:
+    screen_sharing: 20.0        # "I will share my screen" -> wait for actual sharing
+    screen_sharing_immediate: 0.0  # "I'm sharing my screen" -> already happening  
+    demonstrations: 2.0        # "Let me show you" -> wait for demo to start
+    technical: 1.0            # Technical discussions -> small delay for context
+    transitions: 2.0          # "Moving on to" -> wait for transition to complete
+    important: 0.5            # Important points -> small delay for emphasis
+    questions: 1.0            # Q&A moments -> wait for response context
+
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

@@ -177,6 +177,14 @@ def main():
         print("📋 Loading configuration...")
         config = Config()
         
+        # Determine final keyframe settings (CLI overrides config)
+        keyframes_enabled = config.keyframes_enabled and not args.no_keyframes
+        
+        # Use CLI max_keyframes if explicitly provided, otherwise use config
+        import sys
+        max_keyframes_provided = '--max-keyframes' in sys.argv
+        max_keyframes = args.max_keyframes if max_keyframes_provided else config.keyframes_max_frames
+        
         # Display basic info
         print(f"📁 Input folder: {config.input_folder}")
         print(f"🤖 Using model: {config.bedrock_model_id}")
@@ -185,10 +193,13 @@ def main():
             print(f"⚡ Force mode: ON (will overwrite existing files)")
         if args.verbose:
             print(f"🔍 Verbose mode: ON (detailed logging enabled)")
-        if args.no_keyframes:
+        if not keyframes_enabled:
             print(f"🎥 Keyframes: DISABLED")
         else:
-            print(f"🎥 Keyframes: ENABLED (max {args.max_keyframes} per video)")
+            print(f"🎥 Keyframes: ENABLED (max {max_keyframes} per video)")
+            if args.verbose:
+                print(f"   📊 Min relevance score: {config.keyframes_min_relevance_score}")
+                print(f"   🖼️  Image max width: {config.keyframes_image_max_width}px")
         print()
         
         # Initialize and run summarizer
@@ -197,8 +208,8 @@ def main():
         
         summarizer = ConsolidatedSummarizer(
             config,
-            enable_keyframes=not args.no_keyframes,
-            max_keyframes=args.max_keyframes
+            enable_keyframes=keyframes_enabled,
+            max_keyframes=max_keyframes
         )
         results = summarizer.summarize_all(
             summaries_folder="summaries",

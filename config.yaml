@@ -22,6 +22,15 @@ summary:
   include_participants: true
   include_action_items: true
 
+pdf:
+  enabled: true                           # Enable/disable PDF generation
+  filename: "complete_summary_report_{date}.pdf"  # PDF filename template
+  title: "Meeting Summary Report"         # PDF document title
+  include_table_of_contents: true         # Include TOC in PDF
+  include_keyframes: true                 # Include keyframes in PDF
+  page_size: "A4"                        # Page size (A4, Letter, etc.)
+  font_size: 11                          # Base font size
+
 keyframes:
   enabled: true              # Enable/disable keyframe extraction globally
   max_frames: 5              # Maximum keyframes per video (can be overridden by CLI)

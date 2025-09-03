@@ -13,6 +13,7 @@ This application processes VTT (WebVTT) caption files from Teams meetings and ge
 - **AI Summarization**: Uses AWS Bedrock Claude models for intelligent content analysis
 - **Dual Summary Types**: Generates both individual meeting summaries and global consolidated summaries
 - **Keyframe Extraction**: Automatically captures relevant screenshots from meeting recordings
+- **PDF Report Generation**: Creates comprehensive PDF reports combining all summaries
 
 ### 🔧 Advanced Capabilities
 - **Intelligent Timing**: Smart delays for different content types (screen sharing, demonstrations, Q&A)
@@ -20,6 +21,7 @@ This application processes VTT (WebVTT) caption files from Teams meetings and ge
 - **Batch Processing**: Processes multiple meetings in a single run
 - **Flexible Configuration**: YAML-based configuration with CLI overrides
 - **Force/Resume**: Skip existing summaries or force regeneration
+- **Comprehensive Reporting**: Generates professional PDF reports with table of contents
 
 ### 📊 Output Features
 - **Markdown Summaries**: Clean, readable output format
@@ -27,6 +29,7 @@ This application processes VTT (WebVTT) caption files from Teams meetings and ge
 - **Participant Tracking**: Identifies and tracks meeting participants
 - **Action Items**: Extracts and highlights actionable items
 - **Visual Context**: Embeds relevant keyframes in summaries
+- **PDF Reports**: Professional-grade PDF documents with chronological organization
 
 ## Architecture
 
@@ -56,7 +59,8 @@ ms-teams-summarizer/
 4. **Keyframe Extraction**: Captures relevant visual moments (optional)
 5. **Summary Generation**: Creates individual meeting summaries
 6. **Global Analysis**: Consolidates multiple meetings into overview summaries
-7. **Output**: Saves markdown files with embedded keyframes
+7. **PDF Generation**: Creates comprehensive PDF report with all summaries
+8. **Output**: Saves markdown files with embedded keyframes and PDF report
 
 ### AWS Integration
 
@@ -100,7 +104,8 @@ project/
 └── summaries/              # Output directory
     ├── meeting-1_summary.md
     ├── meeting-2_summary.md
-    └── global_summary.md
+    ├── global_summary.md
+    └── complete_summary_report_2025-09-03.pdf
 ```
 
 ## Configuration
@@ -140,6 +145,15 @@ summary:
   include_participants: true
   include_action_items: true
 
+pdf:
+  enabled: true                           # Enable/disable PDF generation
+  filename: "complete_summary_report_{date}.pdf"  # PDF filename template
+  title: "Meeting Summary Report"         # PDF document title
+  include_table_of_contents: true         # Include TOC in PDF
+  include_keyframes: true                 # Include keyframes in PDF
+  page_size: "A4"                        # Page size (A4, Letter, etc.)
+  font_size: 11                          # Base font size
+
 keyframes:
   enabled: true
   max_frames: 5
@@ -169,6 +183,16 @@ processing:
 processing:
   individual_summary_filename: "{date}_{folder_name}_summary.md"
   global_summary_filename: "global_{date}.md"
+```
+
+**Custom PDF Reports:**
+```yaml
+pdf:
+  enabled: true
+  filename: "meeting_report_{timestamp}.pdf"
+  title: "Quarterly Meeting Analysis"
+  page_size: "Letter"
+  include_table_of_contents: false
 ```
 
 ## Installation
@@ -206,6 +230,8 @@ aws configure
 - `webvtt-py` - VTT file parsing
 - `opencv-python` - Video keyframe extraction  
 - `Pillow` - Image processing
+- `reportlab` - PDF generation and formatting
+- `markdown` - Markdown to PDF conversion support
 - `pyyaml` - Configuration management
 - `python-dotenv` - Environment variable support
 
@@ -225,6 +251,14 @@ aws configure
 - Progress tracking on action items
 - Timeline of decisions across meetings
 - Consolidated insights and recommendations
+
+### PDF Report
+- Professional document with title page and table of contents
+- Global summary as first chapter
+- Individual meeting summaries as chapters (chronologically ordered)
+- Embedded keyframe screenshots
+- Meeting metadata and participant information
+- Configurable formatting and page layout
 
 ## Security & Privacy
 

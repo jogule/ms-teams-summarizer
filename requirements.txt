@@ -6,3 +6,5 @@ click>=8.1.0
 python-dotenv>=1.0.0
 opencv-python>=4.8.0
 Pillow>=10.0.0
+reportlab>=4.0.0
+markdown>=3.5.0

@@ -10,6 +10,7 @@ from .bedrock_client import BedrockClient
 from .global_summarizer import GlobalSummarizer
 from .summary_writer import SummaryWriter
 from .keyframe_extractor import KeyframeExtractor
+from .pdf_generator import PDFGenerator
 from .utils import (
     parse_folder_name,
     extract_summary_info,
@@ -55,6 +56,9 @@ class ConsolidatedSummarizer:
             )
         else:
             self.keyframe_extractor = None
+        
+        # Initialize PDF generator
+        self.pdf_generator = PDFGenerator(config)
             
         self.logger = setup_module_logger(__name__)
         
@@ -153,11 +157,19 @@ class ConsolidatedSummarizer:
             self.logger.info("=" * 60)
             
             global_result = self._generate_consolidated_global_summary(summaries_path, force_overwrite)
+            
+            # Step 3: Generate comprehensive PDF report
+            self.logger.info("=" * 60)
+            self.logger.info("STEP 3: GENERATING COMPREHENSIVE PDF REPORT")
+            self.logger.info("=" * 60)
+            
+            pdf_result = self._generate_pdf_report(summaries_path, individual_results["results"], force_overwrite)
         
         result = {
             "status": "success",
             "individual_results": individual_results,
             "global_result": global_result,
+            "pdf_result": pdf_result,
             "total_time": workflow_timer.duration_rounded,
             "summaries_folder": str(summaries_path),
             "timestamp": get_iso_timestamp()
@@ -504,7 +516,57 @@ class ConsolidatedSummarizer:
         """Log final consolidated processing results."""
         individual = results["individual_results"]
         global_result = results["global_result"]
+        pdf_result = results.get("pdf_result", {})
         
+    def _generate_pdf_report(self, summaries_path: Path, individual_results: List[Dict], force_overwrite: bool) -> Dict[str, any]:
+        """
+        Generate comprehensive PDF report from all summaries.
+        
+        Args:
+            summaries_path: Path to summaries directory
+            individual_results: List of individual processing results
+            force_overwrite: Whether to overwrite existing PDF
+            
+        Returns:
+            Dictionary with PDF generation result
+        """
+        try:
+            # Find global summary file
+            global_summary_filename = self._format_filename(self.config.global_summary_filename)
+            global_summary_path = summaries_path / global_summary_filename
+            
+            # Filter successful individual summaries for PDF
+            successful_summaries = [
+                result for result in individual_results 
+                if result.get('status') == 'success'
+            ]
+            
+            if not successful_summaries:
+                self.logger.warning("No successful individual summaries found for PDF generation")
+                return {
+                    "status": "no_summaries",
+                    "message": "No individual summaries available for PDF generation",
+                    "timestamp": get_iso_timestamp()
+                }
+            
+            self.logger.info(f"Generating PDF with {len(successful_summaries)} individual summaries")
+            
+            # Generate PDF
+            return self.pdf_generator.generate_comprehensive_pdf(
+                summaries_path,
+                global_summary_path,
+                successful_summaries,
+                force_overwrite
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Error during PDF generation: {str(e)}")
+            return {
+                "status": "error",
+                "error": str(e),
+                "timestamp": get_iso_timestamp()
+            }
+    
         self.logger.info("="*80)
         self.logger.info("CONSOLIDATED SUMMARIZATION COMPLETE")
         self.logger.info("="*80)
@@ -524,6 +586,21 @@ class ConsolidatedSummarizer:
             self.logger.info(f"  ⏱️  Generation time: {global_result['generation_time']}s")
         else:
             self.logger.info(f"  ❌ {global_result.get('message', 'Failed')}")
+        self.logger.info("")
+        self.logger.info("PDF REPORT:")
+        if pdf_result.get('status') == 'success':
+            self.logger.info(f"  ✅ Generated successfully")
+            self.logger.info(f"  📄 PDF file: {pdf_result.get('pdf_filename', 'Unknown')}")
+            self.logger.info(f"  📊 Summaries included: {pdf_result.get('summaries_included', 0)}")
+            self.logger.info(f"  ⏱️  Generation time: {pdf_result.get('generation_time', 0)}s")
+        elif pdf_result.get('status') == 'disabled':
+            self.logger.info(f"  ⏭️  Disabled in configuration")
+        elif pdf_result.get('status') == 'skipped':
+            self.logger.info(f"  ⏭️  Already exists")
+        elif pdf_result.get('status') == 'no_summaries':
+            self.logger.info(f"  ⚠️  No summaries available")
+        else:
+            self.logger.info(f"  ❌ {pdf_result.get('message', 'Failed')}")
         
         if individual['errors'] > 0:
             self.logger.warning("Some folders had errors - check logs above for details")

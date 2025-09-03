@@ -74,6 +74,7 @@ def print_results(results, config):
     
     individual = results.get("individual_results", {})
     global_result = results.get("global_result", {})
+    pdf_result = results.get("pdf_result", {})
     
     # Individual summaries
     processed = individual.get('processed', 0)
@@ -107,8 +108,22 @@ def print_results(results, config):
     else:
         print(f"   ❌ Failed: {global_result.get('error', 'Unknown error')}")
     
+    # PDF Report
+    print(f"\n📄 PDF Report:")
+    if pdf_result.get('status') == 'success':
+        print(f"   ✅ Generated successfully")
+        print(f"   📊 File: {pdf_result.get('pdf_filename', 'Unknown')}")
+    elif pdf_result.get('status') == 'disabled':
+        print(f"   ⏭️  Disabled in configuration")
+    elif pdf_result.get('status') == 'skipped':
+        print(f"   ⏭️  Already exists")
+    elif pdf_result.get('status') == 'no_summaries':
+        print(f"   ⚠️  No summaries available")
+    else:
+        print(f"   ❌ Failed: {pdf_result.get('error', 'Unknown error')}")
+    
     # Summary
-    print(f"📂 Output Location: {results.get('summaries_folder', config.output_folder)}/")
+    print(f"\n📂 Output Location: {results.get('summaries_folder', config.output_folder)}/")
     print(f"⏱️  Total Time: {results.get('total_time', 0)}s")
     
     if results["status"] == "success":
@@ -193,6 +208,10 @@ def main():
             print(f"⚡ Force mode: ON (will overwrite existing files)")
         if args.verbose:
             print(f"🔍 Verbose mode: ON (detailed logging enabled)")
+        if config.pdf_enabled:
+            print(f"📄 PDF Report: ENABLED")
+        else:
+            print(f"📄 PDF Report: DISABLED")
         if not keyframes_enabled:
             print(f"🎥 Keyframes: DISABLED")
         else:
@@ -217,6 +236,7 @@ def main():
         )
         
         print("   🌍 Processing global summary...")
+        print("   📄 Generating comprehensive PDF report...")
         print("   ✅ All done!")
         
         # Print results

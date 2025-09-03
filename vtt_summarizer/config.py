@@ -150,6 +150,42 @@ class Config:
         }
         return self._config.get('keyframes', {}).get('delays', default_delays)
     
+    # PDF configuration properties
+    @property
+    def pdf_enabled(self) -> bool:
+        """Get whether PDF generation is enabled."""
+        return self._config.get('pdf', {}).get('enabled', True)
+    
+    @property
+    def pdf_filename(self) -> str:
+        """Get PDF filename template."""
+        return self._config.get('pdf', {}).get('filename', 'complete_summary_report_{date}.pdf')
+    
+    @property
+    def pdf_title(self) -> str:
+        """Get PDF document title."""
+        return self._config.get('pdf', {}).get('title', 'Meeting Summary Report')
+    
+    @property
+    def pdf_include_table_of_contents(self) -> bool:
+        """Get whether to include table of contents in PDF."""
+        return self._config.get('pdf', {}).get('include_table_of_contents', True)
+    
+    @property
+    def pdf_include_keyframes(self) -> bool:
+        """Get whether to include keyframes in PDF."""
+        return self._config.get('pdf', {}).get('include_keyframes', True)
+    
+    @property
+    def pdf_page_size(self) -> str:
+        """Get PDF page size."""
+        return self._config.get('pdf', {}).get('page_size', 'A4')
+    
+    @property
+    def pdf_font_size(self) -> int:
+        """Get PDF base font size."""
+        return self._config.get('pdf', {}).get('font_size', 11)
+    
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value by dot-notation key (e.g., 'aws.region')."""
         keys = key.split('.')

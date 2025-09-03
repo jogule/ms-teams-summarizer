@@ -111,8 +111,17 @@ def print_results(results, config):
     # PDF Report
     print(f"\n📄 PDF Report:")
     if pdf_result.get('status') == 'success':
-        print(f"   ✅ Generated successfully")
+        print(f"   ✅ PDF generated successfully")
         print(f"   📊 File: {pdf_result.get('pdf_filename', 'Unknown')}")
+        if pdf_result.get('consolidated_markdown'):
+            markdown_file = Path(pdf_result['consolidated_markdown']).name
+            print(f"   📄 Markdown: {markdown_file}")
+    elif pdf_result.get('status') == 'markdown_only':
+        print(f"   📄 Consolidated markdown created (no PDF converter installed)")
+        if pdf_result.get('consolidated_markdown'):
+            markdown_file = Path(pdf_result['consolidated_markdown']).name
+            print(f"   📄 File: {markdown_file}")
+        print(f"   📝 Install pandoc, weasyprint, or wkhtmltopdf for PDF generation")
     elif pdf_result.get('status') == 'disabled':
         print(f"   ⏭️  Disabled in configuration")
     elif pdf_result.get('status') == 'skipped':

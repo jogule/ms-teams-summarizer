@@ -75,9 +75,13 @@ venv.bak/
 
 # Walkthroughs (media and VTT files)
 walkthroughs/
+summaries/
 
 # MacOS
 .DS_Store
 
 # YAML config backups
 *.bak
+
+# Project backups
+backups/

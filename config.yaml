@@ -10,7 +10,7 @@ processing:
   output_filename: "summary.md"
   
 summary:
-  style: "detailed"  # Options: brief, comprehensive, detailed
+  style: "comprehensive"  # Options: brief, comprehensive, detailed
   include_timestamps: true
   include_participants: true
   include_action_items: true

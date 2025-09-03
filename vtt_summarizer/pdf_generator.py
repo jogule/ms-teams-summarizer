@@ -373,6 +373,11 @@ class PDFGenerator:
                 line.startswith('## Meeting Information')):
                 continue
             
+            # Fix image paths - convert relative paths to absolute paths
+            if line.strip().startswith('![') and '](images/' in line:
+                # Replace images/ with ./images/ to make it relative to the markdown file location
+                line = line.replace('](images/', '](./images/')
+            
             cleaned_lines.append(line)
         
         return '\n'.join(cleaned_lines).strip()

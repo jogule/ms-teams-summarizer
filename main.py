@@ -24,9 +24,17 @@ from vtt_summarizer.consolidated_summarizer import ConsolidatedSummarizer
 
 def setup_logging(verbose=False):
     """Set up console logging based on verbosity level."""
+    # Clear any existing handlers
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    
     if verbose:
         # Verbose mode: Show INFO level logs from our modules
-        logging.getLogger().setLevel(logging.INFO)
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler()]
+        )
         
         # Set our modules to INFO level
         for logger_name in ['vtt_summarizer.consolidated_summarizer', 'vtt_summarizer.bedrock_client', 'vtt_summarizer.global_summarizer']:
@@ -38,13 +46,17 @@ def setup_logging(verbose=False):
             logger = logging.getLogger(logger_name)
             logger.setLevel(logging.WARNING)
     else:
-        # Minimal mode: Suppress all logging except critical errors
-        logging.getLogger().setLevel(logging.CRITICAL)
+        # Minimal mode: Set up a null handler to suppress all logging
+        logging.basicConfig(
+            level=logging.CRITICAL,
+            handlers=[logging.NullHandler()]
+        )
         
         # Suppress all module logs
         for logger_name in ['vtt_summarizer.consolidated_summarizer', 'vtt_summarizer.bedrock_client', 'vtt_summarizer.global_summarizer', 'botocore', 'boto3', 'urllib3']:
             logger = logging.getLogger(logger_name)
             logger.setLevel(logging.CRITICAL)
+            logger.addHandler(logging.NullHandler())
 
 
 def print_header():

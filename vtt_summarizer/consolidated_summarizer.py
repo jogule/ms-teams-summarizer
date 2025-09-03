@@ -503,10 +503,17 @@ class ConsolidatedSummarizer:
         """Set up logging configuration."""
         logger = logging.getLogger(__name__)
         
+        # Check if logging has already been configured globally
+        root_logger = logging.getLogger()
+        if root_logger.handlers:
+            # Logging already configured globally, use existing settings
+            return logger
+        
         # Prevent duplicate handlers
         if logger.handlers:
             return logger
             
+        # Only set up logging if it hasn't been configured globally
         logger.setLevel(getattr(logging, self.config.logging_level))
         
         # Console handler

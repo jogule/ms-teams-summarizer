@@ -62,6 +62,57 @@ class ConsolidatedSummarizer:
         self.logger.info(f"Input folder: {self.config.input_folder}")
         self.logger.info(f"Using model: {self.config.bedrock_model_id}")
     
+    def _format_filename(self, template: str, **kwargs) -> str:
+        """
+        Format filename template with provided variables.
+        
+        Args:
+            template: Filename template with placeholders
+            **kwargs: Variables to substitute in template
+            
+        Returns:
+            Formatted filename string
+        """
+        import datetime
+        
+        # Add standard variables
+        format_vars = {
+            'timestamp': get_iso_timestamp().replace(':', '-').replace('T', '_'),
+            'date': datetime.datetime.now().strftime('%Y-%m-%d'),
+            **kwargs
+        }
+        
+        return template.format(**format_vars)
+    
+    def _extract_folder_name_from_file(self, summary_file: Path) -> str:
+        """
+        Extract folder name from summary filename using config template.
+        
+        Args:
+            summary_file: Path to summary file
+            
+        Returns:
+            Extracted folder name
+        """
+        template = self.config.individual_summary_filename
+        filename = summary_file.name
+        
+        # Simple extraction for basic templates like {folder_name}_summary.md
+        if '{folder_name}' in template:
+            # Find the parts before and after {folder_name}
+            parts = template.split('{folder_name}')
+            if len(parts) == 2:
+                prefix, suffix = parts
+                # Remove prefix and suffix to get folder name
+                if filename.startswith(prefix):
+                    filename = filename[len(prefix):]
+                if filename.endswith(suffix):
+                    filename = filename[:-len(suffix)] if suffix else filename
+                return filename
+        
+        # Fallback: use stem (filename without extension)
+        return summary_file.stem
+    
     def summarize_all(self, force_overwrite: bool = False, summaries_folder: str = "summaries") -> Dict[str, any]:
         """
         Complete workflow: process all VTT files and generate global summary.
@@ -192,7 +243,7 @@ class ConsolidatedSummarizer:
             Dictionary with processing result
         """
         folder_name = folder_path.name
-        summary_filename = f"{folder_name}_summary.md"
+        summary_filename = self._format_filename(self.config.individual_summary_filename, folder_name=folder_name)
         summary_path = summaries_path / summary_filename
         
         self.logger.info(f"Processing: {folder_name}")
@@ -300,7 +351,8 @@ class ConsolidatedSummarizer:
         Returns:
             Dictionary with global summary generation result
         """
-        global_summary_path = summaries_path / "global_summary.md"
+        global_summary_filename = self._format_filename(self.config.global_summary_filename)
+        global_summary_path = summaries_path / global_summary_filename
         
         # Check if global summary already exists
         if global_summary_path.exists() and not force_overwrite:
@@ -363,13 +415,15 @@ class ConsolidatedSummarizer:
         """
         summaries = []
         
-        # Look for all *_summary.md files
-        for summary_file in summaries_path.glob("*_summary.md"):
+        # Look for all individual summary files using config pattern
+        # Convert template to glob pattern (simple approach for basic templates)
+        pattern = self.config.individual_summary_filename.replace('{folder_name}', '*')
+        for summary_file in summaries_path.glob(pattern):
             try:
                 content = safe_read_file(summary_file)
                 
-                # Extract folder name from filename (remove _summary.md)
-                folder_name = summary_file.stem.replace('_summary', '')
+                # Extract folder name from filename using config template
+                folder_name = self._extract_folder_name_from_file(summary_file)
                 
                 # Extract meeting date and topic from folder name
                 meeting_info = parse_folder_name(folder_name)
@@ -410,8 +464,10 @@ class ConsolidatedSummarizer:
         
         for item in walkthroughs_path.iterdir():
             if item.is_dir():
-                # Look for VTT files in this directory
-                vtt_files = list(item.glob("*.vtt"))
+                # Look for input files using configurable patterns
+                vtt_files = []
+                for pattern in self.config.input_file_patterns:
+                    vtt_files.extend(item.glob(pattern))
                 
                 if vtt_files:
                     # Use the first VTT file found (there should typically be only one)

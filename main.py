@@ -65,7 +65,7 @@ def print_header():
     print()
 
 
-def print_results(results):
+def print_results(results, config):
     """Print results in a simple, clean format."""
     print()
     print("=" * 60)
@@ -108,7 +108,7 @@ def print_results(results):
         print(f"   ❌ Failed: {global_result.get('error', 'Unknown error')}")
     
     # Summary
-    print(f"\n📂 Output Location: {results.get('summaries_folder', 'summaries')}/")
+    print(f"📂 Output Location: {results.get('summaries_folder', config.output_folder)}/")
     print(f"⏱️  Total Time: {results.get('total_time', 0)}s")
     
     if results["status"] == "success":
@@ -188,7 +188,7 @@ def main():
         # Display basic info
         print(f"📁 Input folder: {config.input_folder}")
         print(f"🤖 Using model: {config.bedrock_model_id}")
-        print(f"📂 Output folder: summaries")
+        print(f"📂 Output folder: {config.output_folder}")
         if args.force:
             print(f"⚡ Force mode: ON (will overwrite existing files)")
         if args.verbose:
@@ -212,7 +212,7 @@ def main():
             max_keyframes=max_keyframes
         )
         results = summarizer.summarize_all(
-            summaries_folder="summaries",
+            summaries_folder=config.output_folder,
             force_overwrite=args.force
         )
         
@@ -220,7 +220,7 @@ def main():
         print("   ✅ All done!")
         
         # Print results
-        print_results(results)
+        print_results(results, config)
         
         print()
         print("=" * 60)

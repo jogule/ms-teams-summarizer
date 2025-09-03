@@ -82,7 +82,14 @@ aws:
 
 processing:
   input_folder: "walkthroughs"
-  output_filename: "summary.md"
+  output_folder: "summaries"
+  
+  # Filename formats - use placeholders: {folder_name}, {timestamp}, {date}
+  individual_summary_filename: "{folder_name}_summary.md"
+  global_summary_filename: "global_summary.md"
+  
+  # Input file patterns to look for (VTT files)
+  input_file_patterns: ["*.vtt"]
 
 summary:
   style: "comprehensive"

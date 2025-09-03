@@ -105,7 +105,15 @@ project/
 
 ## Configuration
 
-The application uses `config.yaml` for settings:
+The application uses `config.yaml` for settings. All folder paths and filename formats are fully customizable:
+
+### Customizable Options
+
+- **Input/Output Folders**: Change source and destination directories
+- **Filename Templates**: Use placeholders like `{folder_name}`, `{date}`, `{timestamp}`
+- **Input Patterns**: Support different file extensions beyond VTT
+- **AWS Settings**: Choose different Bedrock models and regions
+- **Processing Options**: Adjust keyframe extraction and summary styles
 
 ```yaml
 aws:
@@ -116,8 +124,15 @@ aws:
     temperature: 0.1
 
 processing:
-  input_folder: "walkthroughs"
-  output_filename: "summary.md"
+  input_folder: "walkthroughs"          # Input directory for VTT files
+  output_folder: "summaries"             # Output directory for summaries
+  
+  # Filename formats - use placeholders: {folder_name}, {timestamp}, {date}
+  individual_summary_filename: "{folder_name}_summary.md"
+  global_summary_filename: "global_summary.md"
+  
+  # Input file patterns to look for
+  input_file_patterns: ["*.vtt"]
 
 summary:
   style: "comprehensive"
@@ -130,6 +145,30 @@ keyframes:
   max_frames: 5
   min_relevance_score: 0.3
   image_max_width: 1200
+```
+
+### Configuration Examples
+
+**Different Output Structure:**
+```yaml
+processing:
+  input_folder: "recordings"
+  output_folder: "analysis"
+  individual_summary_filename: "meeting_{folder_name}_{date}.md"
+  global_summary_filename: "master_analysis_{timestamp}.md"
+```
+
+**Multiple Input Types:**
+```yaml
+processing:
+  input_file_patterns: ["*.vtt", "*.srt", "*.txt"]
+```
+
+**Timestamp-based Organization:**
+```yaml
+processing:
+  individual_summary_filename: "{date}_{folder_name}_summary.md"
+  global_summary_filename: "global_{date}.md"
 ```
 
 ## Installation

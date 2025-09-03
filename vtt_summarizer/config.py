@@ -2,7 +2,7 @@
 
 import os
 import yaml
-from typing import Dict, Any
+from typing import Dict, Any, List
 from pathlib import Path
 
 
@@ -60,9 +60,24 @@ class Config:
         return self._config.get('processing', {}).get('input_folder', 'walkthroughs')
     
     @property
-    def output_filename(self) -> str:
-        """Get output filename."""
-        return self._config.get('processing', {}).get('output_filename', 'summary.md')
+    def output_folder(self) -> str:
+        """Get output folder path."""
+        return self._config.get('processing', {}).get('output_folder', 'summaries')
+    
+    @property
+    def individual_summary_filename(self) -> str:
+        """Get individual summary filename format."""
+        return self._config.get('processing', {}).get('individual_summary_filename', '{folder_name}_summary.md')
+    
+    @property
+    def global_summary_filename(self) -> str:
+        """Get global summary filename."""
+        return self._config.get('processing', {}).get('global_summary_filename', 'global_summary.md')
+    
+    @property
+    def input_file_patterns(self) -> List[str]:
+        """Get input file patterns to search for."""
+        return self._config.get('processing', {}).get('input_file_patterns', ['*.vtt'])
     
     @property
     def summary_style(self) -> str:

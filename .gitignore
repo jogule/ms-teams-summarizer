@@ -73,9 +73,9 @@ ENV/
 env.bak/
 venv.bak/
 
-# Walkthroughs (media and VTT files)
-walkthroughs/
-summaries/
+# Inputs (media and VTT files)
+inputs/
+outputs/
 
 # MacOS
 .DS_Store

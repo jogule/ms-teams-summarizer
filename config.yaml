@@ -6,8 +6,8 @@ aws:
     temperature: 0.1
 
 processing:
-  input_folder: "walkthroughs"
-  output_folder: "summaries"
+  input_folder: "inputs"
+  output_folder: "outputs"
   
   # Filename formats - use placeholders: {folder_name}, {timestamp}, {date}
   individual_summary_filename: "{folder_name}_summary.md"

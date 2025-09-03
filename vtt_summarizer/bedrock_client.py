@@ -4,11 +4,11 @@ import json
 import boto3
 from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError, NoCredentialsError
-import logging
 import time
 import random
 
 from .config import Config
+from .utils import setup_module_logger
 
 
 class BedrockClient:
@@ -22,7 +22,7 @@ class BedrockClient:
             config: Configuration object
         """
         self.config = config
-        self.logger = logging.getLogger(__name__)
+        self.logger = setup_module_logger(__name__)
         
         try:
             self.bedrock_runtime = boto3.client(

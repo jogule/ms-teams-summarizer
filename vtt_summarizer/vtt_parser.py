@@ -5,7 +5,8 @@ import webvtt
 from typing import List, Dict, Optional, Tuple
 from pathlib import Path
 from dataclasses import dataclass
-import logging
+
+from .utils import time_to_seconds, seconds_to_time, setup_module_logger
 
 
 @dataclass
@@ -22,7 +23,7 @@ class VTTParser:
     
     def __init__(self):
         """Initialize VTT parser."""
-        self.logger = logging.getLogger(__name__)
+        self.logger = setup_module_logger(__name__)
     
     def parse_file(self, vtt_path: str) -> List[TranscriptSegment]:
         """
@@ -55,8 +56,8 @@ class VTTParser:
                         start_time=caption.start,
                         end_time=caption.end,
                         text=clean_text,
-                        duration_seconds=self._time_to_seconds(caption.end) - 
-                                       self._time_to_seconds(caption.start)
+                        duration_seconds=time_to_seconds(caption.end) - 
+                                       time_to_seconds(caption.start)
                     )
                     segments.append(segment)
             
@@ -105,7 +106,7 @@ class VTTParser:
         last_timestamp_seconds = 0
         
         for segment in segments:
-            segment_start_seconds = self._time_to_seconds(segment.start_time)
+            segment_start_seconds = time_to_seconds(segment.start_time)
             
             # Add timestamp marker if enough time has passed
             if segment_start_seconds - last_timestamp_seconds >= timestamp_interval:
@@ -131,7 +132,7 @@ class VTTParser:
         if not segments:
             return {"duration_seconds": 0, "segment_count": 0, "word_count": 0}
         
-        total_duration = self._time_to_seconds(segments[-1].end_time)
+        total_duration = time_to_seconds(segments[-1].end_time)
         total_words = sum(len(segment.text.split()) for segment in segments)
         
         # Try to identify potential speakers (simple heuristic)
@@ -139,7 +140,7 @@ class VTTParser:
         
         return {
             "duration_seconds": total_duration,
-            "duration_formatted": self._seconds_to_time(total_duration),
+            "duration_formatted": seconds_to_time(total_duration),
             "segment_count": len(segments),
             "word_count": total_words,
             "estimated_speakers": len(potential_speakers),
@@ -171,28 +172,6 @@ class VTTParser:
         
         return text.strip()
     
-    def _time_to_seconds(self, time_str: str) -> float:
-        """Convert VTT time format to seconds."""
-        try:
-            # Format: HH:MM:SS.mmm or MM:SS.mmm
-            parts = time_str.split(':')
-            if len(parts) == 3:  # HH:MM:SS.mmm
-                hours, minutes, seconds = parts
-                return float(hours) * 3600 + float(minutes) * 60 + float(seconds)
-            elif len(parts) == 2:  # MM:SS.mmm
-                minutes, seconds = parts
-                return float(minutes) * 60 + float(seconds)
-            else:
-                return 0.0
-        except (ValueError, IndexError):
-            return 0.0
-    
-    def _seconds_to_time(self, seconds: float) -> str:
-        """Convert seconds to HH:MM:SS format."""
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = int(seconds % 60)
-        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     
     def _identify_speakers(self, segments: List[TranscriptSegment]) -> List[str]:
         """

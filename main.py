@@ -8,11 +8,9 @@ No CLI, no options, just processes all VTT files and generates summaries.
 """
 
 import sys
-import os
 import logging
 import argparse
 from pathlib import Path
-from datetime import datetime
 
 # Add the current directory to Python path
 current_dir = Path(__file__).parent

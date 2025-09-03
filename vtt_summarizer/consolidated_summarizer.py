@@ -1,17 +1,24 @@
 """Consolidated summarizer that handles both individual and global summaries in one workflow."""
 
-import os
-import logging
-import shutil
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime
 import time
 
 from .config import Config
 from .vtt_parser import VTTParser
 from .bedrock_client import BedrockClient
 from .global_summarizer import GlobalSummarizer
+from .summary_writer import SummaryWriter
+from .utils import (
+    parse_folder_name,
+    extract_summary_info,
+    safe_read_file,
+    setup_module_logger,
+    ProcessingTimer,
+    get_iso_timestamp,
+    extract_meeting_context,
+    ensure_directory
+)
 
 
 class ConsolidatedSummarizer:
@@ -28,7 +35,8 @@ class ConsolidatedSummarizer:
         self.vtt_parser = VTTParser()
         self.bedrock_client = BedrockClient(config)
         self.global_summarizer = GlobalSummarizer(config)
-        self.logger = self._setup_logging()
+        self.summary_writer = SummaryWriter()
+        self.logger = setup_module_logger(__name__)
         
         self.logger.info("Consolidated Summarizer initialized")
         self.logger.info(f"Input folder: {self.config.input_folder}")
@@ -45,48 +53,43 @@ class ConsolidatedSummarizer:
         Returns:
             Dictionary with complete processing results
         """
-        start_time = datetime.now()
-        
-        # Create summaries directory
-        summaries_path = Path(summaries_folder)
-        summaries_path.mkdir(exist_ok=True)
-        
-        self.logger.info(f"Created summaries directory: {summaries_path}")
-        
-        # Step 1: Process individual VTT files
-        self.logger.info("=" * 60)
-        self.logger.info("STEP 1: PROCESSING INDIVIDUAL VTT FILES")
-        self.logger.info("=" * 60)
-        
-        individual_results = self._process_individual_summaries(summaries_path, force_overwrite)
-        
-        # Check if we need to generate global summary (even if individual files were skipped)
-        if individual_results["processed"] == 0 and individual_results["skipped"] == 0:
-            return {
-                "status": "no_files",
-                "message": "No VTT files found",
-                "individual_results": individual_results,
-                "global_result": None,
-                "timestamp": datetime.now().isoformat()
-            }
-        
-        # Step 2: Generate global summary
-        self.logger.info("=" * 60)
-        self.logger.info("STEP 2: GENERATING GLOBAL SUMMARY")
-        self.logger.info("=" * 60)
-        
-        global_result = self._generate_consolidated_global_summary(summaries_path, force_overwrite)
-        
-        # Calculate total time
-        total_time = (datetime.now() - start_time).total_seconds()
+        with ProcessingTimer("Complete workflow") as workflow_timer:
+            # Create summaries directory
+            summaries_path = ensure_directory(Path(summaries_folder))
+            
+            self.logger.info(f"Created summaries directory: {summaries_path}")
+            
+            # Step 1: Process individual VTT files
+            self.logger.info("=" * 60)
+            self.logger.info("STEP 1: PROCESSING INDIVIDUAL VTT FILES")
+            self.logger.info("=" * 60)
+            
+            individual_results = self._process_individual_summaries(summaries_path, force_overwrite)
+            
+            # Check if we need to generate global summary (even if individual files were skipped)
+            if individual_results["processed"] == 0 and individual_results["skipped"] == 0:
+                return {
+                    "status": "no_files",
+                    "message": "No VTT files found",
+                    "individual_results": individual_results,
+                    "global_result": None,
+                    "timestamp": get_iso_timestamp()
+                }
+            
+            # Step 2: Generate global summary
+            self.logger.info("=" * 60)
+            self.logger.info("STEP 2: GENERATING GLOBAL SUMMARY")
+            self.logger.info("=" * 60)
+            
+            global_result = self._generate_consolidated_global_summary(summaries_path, force_overwrite)
         
         result = {
             "status": "success",
             "individual_results": individual_results,
             "global_result": global_result,
-            "total_time": round(total_time, 2),
+            "total_time": workflow_timer.duration_rounded,
             "summaries_folder": str(summaries_path),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": get_iso_timestamp()
         }
         
         self._log_final_consolidated_results(result)
@@ -123,7 +126,7 @@ class ConsolidatedSummarizer:
             "errors": 0,
             "skipped": 0,
             "results": [],
-            "start_time": datetime.now().isoformat(),
+            "start_time": get_iso_timestamp(),
             "total_folders": len(vtt_folders)
         }
         
@@ -147,10 +150,10 @@ class ConsolidatedSummarizer:
                     "folder": str(folder_path),
                     "status": "error",
                     "error": str(e),
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": get_iso_timestamp()
                 })
         
-        results["end_time"] = datetime.now().isoformat()
+        results["end_time"] = get_iso_timestamp()
         
         return results
     
@@ -182,7 +185,7 @@ class ConsolidatedSummarizer:
                 "status": "skipped",
                 "message": "Summary file already exists",
                 "summary_path": str(summary_path),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_iso_timestamp()
             }
         
         try:
@@ -199,7 +202,7 @@ class ConsolidatedSummarizer:
                            f"{metadata['duration_formatted']} duration")
             
             # Generate meeting context
-            meeting_context = self._extract_meeting_context(folder_name, metadata)
+            meeting_context = extract_meeting_context(folder_name, metadata)
             
             # Generate summary
             self.logger.info("Generating summary with Claude...")
@@ -211,7 +214,7 @@ class ConsolidatedSummarizer:
             self.logger.info(f"Summary generation completed in {generation_time:.2f}s")
             
             # Save summary
-            self._save_individual_summary(summary_path, summary, metadata, folder_name)
+            self.summary_writer.write_individual_summary(summary_path, summary, metadata, folder_name)
             
             self.logger.info(f"Successfully processed {folder_name}")
             
@@ -225,7 +228,7 @@ class ConsolidatedSummarizer:
                     "generation_time": round(generation_time, 2),
                     "total_time": round(parse_time + generation_time, 2)
                 },
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_iso_timestamp()
             }
             
         except Exception as e:
@@ -234,7 +237,7 @@ class ConsolidatedSummarizer:
                 "folder": folder_name,
                 "status": "error",
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_iso_timestamp()
             }
     
     def _generate_consolidated_global_summary(self, summaries_path: Path, force_overwrite: bool) -> Dict[str, any]:
@@ -257,7 +260,7 @@ class ConsolidatedSummarizer:
                 "status": "skipped",
                 "message": "Global summary file already exists",
                 "global_summary_path": str(global_summary_path),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_iso_timestamp()
             }
         
         # Collect individual summaries from summaries folder
@@ -268,29 +271,27 @@ class ConsolidatedSummarizer:
             return {
                 "status": "no_summaries",
                 "message": "No individual summaries to aggregate",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_iso_timestamp()
             }
         
         self.logger.info(f"Found {len(summaries)} individual summaries to aggregate")
         
         try:
             self.logger.info("Generating global summary with Claude...")
-            start_time = time.time()
+            with ProcessingTimer("Global summary generation") as timer:
+                global_content = self.global_summarizer._generate_global_content(summaries)
             
-            global_content = self.global_summarizer._generate_global_content(summaries)
-            
-            generation_time = time.time() - start_time
-            self.logger.info(f"Global summary generation completed in {generation_time:.2f}s")
+            self.logger.info(f"Global summary generation completed in {timer.duration_rounded}s")
             
             # Save global summary
-            self._save_global_summary(global_summary_path, global_content, summaries)
+            self.summary_writer.write_global_summary(global_summary_path, global_content, summaries)
             
             return {
                 "status": "success",
                 "global_summary_path": str(global_summary_path),
                 "summaries_processed": len(summaries),
-                "generation_time": round(generation_time, 2),
-                "timestamp": datetime.now().isoformat()
+                "generation_time": timer.duration_rounded,
+                "timestamp": get_iso_timestamp()
             }
             
         except Exception as e:
@@ -298,7 +299,7 @@ class ConsolidatedSummarizer:
             return {
                 "status": "error",
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_iso_timestamp()
             }
     
     def _collect_summaries_from_folder(self, summaries_path: Path) -> List[Dict[str, any]]:
@@ -316,17 +317,16 @@ class ConsolidatedSummarizer:
         # Look for all *_summary.md files
         for summary_file in summaries_path.glob("*_summary.md"):
             try:
-                with open(summary_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                content = safe_read_file(summary_file)
                 
                 # Extract folder name from filename (remove _summary.md)
                 folder_name = summary_file.stem.replace('_summary', '')
                 
                 # Extract meeting date and topic from folder name
-                meeting_info = self.global_summarizer._parse_folder_name(folder_name)
+                meeting_info = parse_folder_name(folder_name)
                 
                 # Extract key information from summary
-                summary_data = self.global_summarizer._extract_summary_info(content, folder_name)
+                summary_data = extract_summary_info(content, folder_name)
                 
                 summaries.append({
                     "folder_name": folder_name,
@@ -374,159 +374,9 @@ class ConsolidatedSummarizer:
         
         return vtt_folders
     
-    def _extract_meeting_context(self, folder_name: str, metadata: Dict) -> str:
-        """
-        Extract context information about the meeting from folder name and metadata.
-        
-        Args:
-            folder_name: Name of the walkthrough folder
-            metadata: VTT metadata dictionary
-            
-        Returns:
-            Formatted meeting context string
-        """
-        context_parts = []
-        
-        # Parse folder name for date and topic
-        if "_" in folder_name:
-            parts = folder_name.split("_", 1)
-            if len(parts) == 2:
-                date_part, topic_part = parts
-                context_parts.append(f"Meeting Date: {date_part}")
-                context_parts.append(f"Topic: {topic_part.replace('_', ' ').title()}")
-        else:
-            context_parts.append(f"Meeting: {folder_name.replace('_', ' ').title()}")
-        
-        # Add metadata
-        context_parts.append(f"Duration: {metadata['duration_formatted']}")
-        context_parts.append(f"Transcript Length: {metadata['word_count']} words")
-        
-        if metadata['estimated_speakers'] > 0:
-            context_parts.append(f"Estimated Speakers: {metadata['estimated_speakers']}")
-        
-        return "\n".join(context_parts)
     
-    def _save_individual_summary(self, summary_path: Path, summary: str, 
-                                metadata: Dict, folder_name: str) -> None:
-        """
-        Save the generated summary to a markdown file.
-        
-        Args:
-            summary_path: Path where to save the summary
-            summary: Generated summary text
-            metadata: VTT metadata
-            folder_name: Name of the walkthrough folder
-        """
-        try:
-            with open(summary_path, 'w', encoding='utf-8') as f:
-                # Write header
-                f.write(f"# {folder_name.replace('_', ' ').title()} - Meeting Summary\n\n")
-                
-                # Write metadata
-                f.write("## Meeting Information\n\n")
-                f.write(f"- **Date Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"- **Duration**: {metadata['duration_formatted']}\n")
-                f.write(f"- **Transcript Words**: {metadata['word_count']:,}\n")
-                f.write(f"- **Source File**: {Path(metadata['file_path']).name}\n\n")
-                
-                # Write the summary
-                f.write("## Summary\n\n")
-                f.write(summary)
-                
-                # Add footer
-                f.write("\n\n---\n")
-                f.write("*This summary was generated automatically using AWS Bedrock and Claude AI.*\n")
-            
-            self.logger.info(f"Summary saved to: {summary_path}")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to save summary to {summary_path}: {str(e)}")
-            raise
     
-    def _save_global_summary(self, global_summary_path: Path, content: str, summaries: List[Dict]) -> None:
-        """
-        Save the global summary to a file.
-        
-        Args:
-            global_summary_path: Path where to save the global summary
-            content: Generated summary content
-            summaries: List of individual summaries for metadata
-        """
-        try:
-            with open(global_summary_path, 'w', encoding='utf-8') as f:
-                # Write header
-                f.write("# Global Walkthrough Series Summary\n\n")
-                
-                # Write metadata
-                f.write("## Series Information\n\n")
-                f.write(f"- **Date Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"- **Total Meetings**: {len(summaries)}\n")
-                
-                # Calculate total duration and words
-                total_transcript_words = 0
-                for summary in summaries:
-                    # Try to extract word count
-                    words_str = summary.get('transcript_words', '0')
-                    import re
-                    words_match = re.search(r'([\d,]+)', str(words_str).replace(',', ''))
-                    if words_match:
-                        try:
-                            total_transcript_words += int(words_match.group(1))
-                        except ValueError:
-                            pass  # Skip if can't parse
-                
-                f.write(f"- **Total Transcript Words Analyzed**: {total_transcript_words:,}\n")
-                f.write(f"- **Meeting Topics**: {', '.join([s['meeting_topic'] for s in summaries])}\n")
-                
-                # Date range
-                dates = [s.get('meeting_date') for s in summaries if s.get('meeting_date')]
-                if dates:
-                    f.write(f"- **Date Range**: {min(dates)} to {max(dates)}\n")
-                
-                f.write("\n")
-                
-                # Write the AI-generated content
-                f.write("## Analysis\n\n")
-                f.write(content)
-                
-                # Add footer
-                f.write("\n\n---\n")
-                f.write("*This global summary was generated automatically by analyzing all individual meeting summaries using AWS Bedrock and Claude AI.*\n")
-            
-            self.logger.info(f"Global summary saved to: {global_summary_path}")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to save global summary to {global_summary_path}: {str(e)}")
-            raise
     
-    def _setup_logging(self) -> logging.Logger:
-        """Set up logging configuration."""
-        logger = logging.getLogger(__name__)
-        
-        # Check if logging has already been configured globally
-        root_logger = logging.getLogger()
-        if root_logger.handlers:
-            # Logging already configured globally, use existing settings
-            return logger
-        
-        # Prevent duplicate handlers
-        if logger.handlers:
-            return logger
-            
-        # Only set up logging if it hasn't been configured globally
-        logger.setLevel(getattr(logging, self.config.logging_level))
-        
-        # Console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(getattr(logging, self.config.logging_level))
-        
-        # Formatter
-        formatter = logging.Formatter(self.config.logging_format)
-        console_handler.setFormatter(formatter)
-        
-        logger.addHandler(console_handler)
-        
-        return logger
     
     def _log_final_consolidated_results(self, results: Dict) -> None:
         """Log final consolidated processing results."""

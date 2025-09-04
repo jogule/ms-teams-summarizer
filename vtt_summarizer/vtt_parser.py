@@ -16,6 +16,7 @@ class TranscriptSegment:
     end_time: str
     text: str
     duration_seconds: Optional[float] = None
+    original_text: Optional[str] = None  # Preserve original VTT text with speaker info
 
 
 class VTTParser:
@@ -48,6 +49,9 @@ class VTTParser:
             segments = []
             
             for caption in captions:
+                # Store original text before cleaning
+                original_text = caption.text.strip()
+                
                 # Clean the text content
                 clean_text = self._clean_text(caption.text)
                 
@@ -57,7 +61,8 @@ class VTTParser:
                         end_time=caption.end,
                         text=clean_text,
                         duration_seconds=time_to_seconds(caption.end) - 
-                                       time_to_seconds(caption.start)
+                                       time_to_seconds(caption.start),
+                        original_text=original_text
                     )
                     segments.append(segment)
             

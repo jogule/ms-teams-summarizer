@@ -280,18 +280,83 @@ class KeyframeExtractor:
         # Sort by start time to maintain chronological order
         context_segments.sort(key=lambda s: time_to_seconds(s.start_time))
         
-        # Combine the text from all context segments
+        # Combine the text from all context segments with timestamp and speaker info
         context_text_parts = []
         for segment in context_segments:
             text = segment.text.strip()
             if text:
+                # Get timestamp for display
+                timestamp = self._format_timestamp_for_display(segment.start_time)
+                
+                # Get speaker information if available
+                speaker = None
+                if hasattr(segment, 'original_text') and segment.original_text:
+                    speaker = self._extract_speaker_from_text(segment.original_text)
+                
+                # Format the segment with timestamp and optional speaker
+                segment_parts = [f"[{timestamp}]"]
+                
+                if speaker:
+                    segment_parts.append(f"{speaker}:")
+                
                 # Mark the target segment for clarity
                 if segment == target_segment:
-                    context_text_parts.append(f"**{text}**")
+                    segment_parts.append(f"**{text}**")
                 else:
-                    context_text_parts.append(text)
+                    segment_parts.append(text)
+                
+                context_text_parts.append(" ".join(segment_parts))
         
-        return " ".join(context_text_parts)
+        return " | ".join(context_text_parts)
+    
+    def _extract_speaker_from_text(self, text: str) -> Optional[str]:
+        """
+        Extract speaker name from VTT text if present.
+        
+        Args:
+            text: Original VTT text that may contain speaker information
+            
+        Returns:
+            Speaker name if found, None otherwise
+        """
+        if not text:
+            return None
+            
+        # Look for speaker patterns at the beginning of text
+        # Common patterns: "Speaker: text", "John Smith: text", "Presenter: text"
+        speaker_match = re.match(r'^([A-Za-z\s]+):\s*', text.strip())
+        if speaker_match:
+            return speaker_match.group(1).strip()
+        
+        return None
+    
+    def _format_timestamp_for_display(self, timestamp: str) -> str:
+        """
+        Format timestamp for better readability in context.
+        
+        Args:
+            timestamp: VTT timestamp (e.g., "00:01:23.456")
+            
+        Returns:
+            Formatted timestamp for display (e.g., "1:23")
+        """
+        try:
+            # Parse the timestamp and format it more readably
+            parts = timestamp.split(':')
+            if len(parts) >= 3:
+                hours = int(parts[0])
+                minutes = int(parts[1])
+                seconds = int(float(parts[2]))
+                
+                # Format based on duration
+                if hours > 0:
+                    return f"{hours}:{minutes:02d}:{seconds:02d}"
+                else:
+                    return f"{minutes}:{seconds:02d}"
+            else:
+                return timestamp
+        except (ValueError, IndexError):
+            return timestamp
     
     def _select_best_candidates(self, candidates: List[KeyframeCandidate]) -> List[KeyframeCandidate]:
         """

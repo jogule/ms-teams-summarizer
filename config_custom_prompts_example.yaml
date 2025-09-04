@@ -1,0 +1,135 @@
+# Example configuration showing customized prompt templates
+# Copy this to config.yaml and modify as needed
+
+aws:
+  region: "us-west-2"
+  bedrock:
+    model_id: "anthropic.claude-3-haiku-20240307-v1:0"
+    max_tokens: 4000
+    temperature: 0.1
+
+processing:
+  input_folder: "inputs"
+  output_folder: "outputs"
+  individual_summary_filename: "{folder_name}_summary.md"
+  global_summary_filename: "global_summary.md"
+  input_file_patterns: ["*.vtt"]
+
+summary:
+  style: "comprehensive"
+  include_timestamps: true
+  include_participants: true
+  include_action_items: true
+
+pdf:
+  enabled: true
+  filename: "complete_summary_report_{date}.pdf"
+  title: "Meeting Summary Report"
+  include_table_of_contents: true
+  include_keyframes: true
+  page_size: "A4"
+  font_size: 11
+
+keyframes:
+  enabled: true
+  max_frames: 10
+  min_relevance_score: 0.3
+  image_max_width: 1200
+  image_quality: 100
+  delays:
+    screen_sharing: 20.0
+    screen_sharing_immediate: 1.0
+    demonstrations: 5.0
+    technical: 3.0
+    transitions: 5.0
+    important: 1.0
+    questions: 1.0
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# CUSTOMIZABLE PROMPT TEMPLATES
+# Modify these templates to change how the AI analyzes and summarizes meetings
+prompts:
+  # Individual meeting summary prompt template
+  individual_summary:
+    # Main instruction - you can change the analysis focus here
+    instruction: "You are a senior technical analyst. Please analyze the following meeting transcript and create a {summary_style} technical summary with focus on architecture and implementation details."
+    
+    # Requirements that can be conditionally included based on config settings
+    requirements:
+      participants: "- **Participants**: List all meeting attendees and their roles"
+      main_topics: "- **Discussion Topics**: Primary subjects and themes covered"
+      key_points: "- **Key Insights**: Critical information, decisions, and technical insights"
+      technical_details: "- **Technical Architecture**: Detailed technical concepts, system designs, and implementation approaches"
+      action_items: "- **Next Steps**: Specific tasks, assignments, and follow-up actions"
+      decisions: "- **Decisions & Resolutions**: Final decisions made and issues resolved"
+      questions_issues: "- **Open Issues**: Unresolved questions and outstanding concerns"
+      timeline: "- **Timeline**: Key moments and approximate timestamps for important discussions"
+    
+    # Custom formatting instructions
+    format_instructions: |
+      Structure your response using clear Markdown formatting with:
+      - Hierarchical headers (## and ###)
+      - Bullet points for lists
+      - Code blocks for technical details
+      - Bold text for emphasis on key decisions
+      Prioritize technical accuracy and implementation feasibility in your analysis.
+    
+    # Template structure (placeholders will be filled automatically)
+    template: |
+      {instruction}
+      
+      Please provide a structured analysis including:
+      {requirements}
+      
+      {format_instructions}
+      
+      {context_info}**Meeting Transcript:**
+      {transcript}
+  
+  # Global summary prompt template
+  global_summary:
+    # Custom instruction for global analysis
+    instruction: "As a technical program manager, analyze this series of technical meetings to create a comprehensive program-level summary focusing on system architecture evolution and strategic technical decisions."
+    
+    # Customized sections for global summary
+    required_sections:
+      - "- **Executive Summary**: High-level technical program overview and outcomes"
+      - "- **Architecture Evolution**: How system designs evolved across meetings"
+      - "- **Meeting Series Timeline**: Chronological summary of all sessions"
+      - "- **Cross-Session Technical Themes**: Recurring architectural patterns and decisions"
+      - "- **System Architecture Landscape**: Overall technical ecosystem discussed"
+      - "- **Key Technical Stakeholders**: Primary architects and decision makers"
+      - "- **Strategic Technical Initiatives**: Major technical programs and projects"
+      - "- **Technology Stack & Tools**: Platforms, frameworks, and tools covered"
+      - "- **Migration & Modernization Strategy**: Technical transformation efforts"
+      - "- **Technical Debt & Challenges**: System issues and technical obstacles"
+      - "- **Consolidated Action Plan**: Prioritized technical tasks and milestones"
+      - "- **Technical Recommendations**: Strategic technical guidance and next steps"
+    
+    # Custom formatting for global summaries
+    format_instructions: |
+      Create a comprehensive technical program report using:
+      - Executive-level language for strategic sections
+      - Technical depth for architectural discussions
+      - Clear section headers and bullet points
+      - Tables or structured lists where appropriate
+      - Emphasis on cross-meeting insights and patterns
+      Focus on technical program management perspective rather than individual meeting details.
+    
+    # Template structure for global summaries
+    template: |
+      {instruction}
+      
+      Please provide a comprehensive technical program analysis covering:
+      {required_sections}
+      
+      {format_instructions}
+      
+      **Technical Meeting Series Overview:**
+      {meetings_overview}
+      
+      **Detailed Meeting Content for Analysis:**
+      {combined_summaries}

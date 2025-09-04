@@ -186,6 +186,76 @@ class Config:
         """Get PDF base font size."""
         return self._config.get('pdf', {}).get('font_size', 11)
     
+    # Prompt template configuration properties
+    @property
+    def prompt_individual_summary_instruction(self) -> str:
+        """Get individual summary instruction template."""
+        default = "Please analyze the following meeting transcript and create a {summary_style} summary."
+        return self._config.get('prompts', {}).get('individual_summary', {}).get('instruction', default)
+    
+    @property
+    def prompt_individual_summary_requirements(self) -> Dict[str, str]:
+        """Get individual summary requirements templates."""
+        defaults = {
+            'participants': "- **Participants**: List of people who spoke during the meeting",
+            'main_topics': "- **Main Topics**: Key subjects discussed during the meeting",
+            'key_points': "- **Key Points**: Important information, decisions, and insights shared",
+            'technical_details': "- **Technical Details**: Any technical concepts, architectures, or implementations discussed",
+            'action_items': "- **Action Items**: Tasks, next steps, or follow-up items mentioned",
+            'decisions': "- **Decisions Made**: Any concrete decisions or conclusions reached",
+            'questions_issues': "- **Questions/Issues Raised**: Important questions or problems discussed",
+            'timeline': "- **Timeline**: Reference key moments with approximate timestamps when significant topics were discussed"
+        }
+        return self._config.get('prompts', {}).get('individual_summary', {}).get('requirements', defaults)
+    
+    @property
+    def prompt_individual_summary_format_instructions(self) -> str:
+        """Get individual summary format instructions."""
+        default = "Please format the summary in clear Markdown with appropriate headers and bullet points.\nFocus on technical accuracy and ensure all important information is captured."
+        return self._config.get('prompts', {}).get('individual_summary', {}).get('format_instructions', default)
+    
+    @property
+    def prompt_individual_summary_template(self) -> str:
+        """Get individual summary complete template."""
+        default = "{instruction}\n\nYour summary should include:\n{requirements}\n\n{format_instructions}\n\n{context_info}**Transcript:**\n{transcript}"
+        return self._config.get('prompts', {}).get('individual_summary', {}).get('template', default)
+    
+    @property
+    def prompt_global_summary_instruction(self) -> str:
+        """Get global summary instruction."""
+        default = "Please analyze the following series of technical walkthrough meetings and create a comprehensive global summary."
+        return self._config.get('prompts', {}).get('global_summary', {}).get('instruction', default)
+    
+    @property
+    def prompt_global_summary_required_sections(self) -> List[str]:
+        """Get global summary required sections."""
+        defaults = [
+            "- **Executive Summary**: High-level overview of the entire walkthrough series",
+            "- **Meeting Series Overview**: List of all meetings with key details",
+            "- **Cross-Meeting Themes**: Common themes and patterns across all sessions",
+            "- **Technical Architecture Overview**: Overall technical landscape discussed",
+            "- **Key Stakeholders**: People involved across multiple sessions",
+            "- **Strategic Initiatives**: Major projects and initiatives identified",
+            "- **Technology Stack**: Technologies, platforms, and tools discussed",
+            "- **Migration & Transformation**: Any migration or modernization efforts",
+            "- **Outstanding Issues**: Common problems and challenges across meetings",
+            "- **Action Items Summary**: Consolidated action items and next steps",
+            "- **Recommendations**: Strategic recommendations based on all meetings"
+        ]
+        return self._config.get('prompts', {}).get('global_summary', {}).get('required_sections', defaults)
+    
+    @property
+    def prompt_global_summary_format_instructions(self) -> str:
+        """Get global summary format instructions."""
+        default = "Format the output in clear Markdown with appropriate headers and bullet points.\nFocus on strategic insights and cross-meeting connections rather than individual meeting details."
+        return self._config.get('prompts', {}).get('global_summary', {}).get('format_instructions', default)
+    
+    @property
+    def prompt_global_summary_template(self) -> str:
+        """Get global summary complete template."""
+        default = "{instruction}\n\nYou should provide:\n{required_sections}\n\n{format_instructions}\n\n**Meeting Series Overview:**\n{meetings_overview}\n\n**Individual Meeting Summaries for Analysis:**\n{combined_summaries}"
+        return self._config.get('prompts', {}).get('global_summary', {}).get('template', default)
+    
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value by dot-notation key (e.g., 'aws.region')."""
         keys = key.split('.')

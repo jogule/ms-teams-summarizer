@@ -10,6 +10,7 @@ import random
 from .config import Config
 from .utils import setup_module_logger
 from .model_statistics import ModelStatisticsTracker, ModelCallStats
+from .prompt_engine import PromptEngine
 
 
 class BedrockClient:
@@ -26,6 +27,7 @@ class BedrockClient:
         self.config = config
         self.logger = setup_module_logger(__name__)
         self.stats_tracker = stats_tracker
+        self.prompt_engine = PromptEngine(config)
         
         try:
             self.bedrock_runtime = boto3.client(
@@ -85,7 +87,7 @@ class BedrockClient:
     
     def _build_summary_prompt(self, transcript: str, meeting_context: Optional[str] = None) -> str:
         """
-        Build the prompt for Claude to generate a meeting summary.
+        Build the prompt for Claude to generate a meeting summary using configurable templates.
         
         Args:
             transcript: The meeting transcript
@@ -94,48 +96,7 @@ class BedrockClient:
         Returns:
             Formatted prompt string
         """
-        context_info = f"Meeting Context: {meeting_context}\\n\\n" if meeting_context else ""
-        
-        # Create a comprehensive prompt based on configuration
-        prompt_parts = [
-            f"Please analyze the following meeting transcript and create a {self.config.summary_style} summary.",
-            "",
-            "Your summary should include:"
-        ]
-        
-        # Add requirements based on configuration
-        requirements = []
-        if self.config.include_participants:
-            requirements.append("- **Participants**: List of people who spoke during the meeting")
-        
-        requirements.extend([
-            "- **Main Topics**: Key subjects discussed during the meeting",
-            "- **Key Points**: Important information, decisions, and insights shared",
-            "- **Technical Details**: Any technical concepts, architectures, or implementations discussed"
-        ])
-        
-        if self.config.include_action_items:
-            requirements.append("- **Action Items**: Tasks, next steps, or follow-up items mentioned")
-        
-        requirements.extend([
-            "- **Decisions Made**: Any concrete decisions or conclusions reached",
-            "- **Questions/Issues Raised**: Important questions or problems discussed"
-        ])
-        
-        if self.config.include_timestamps:
-            requirements.append("- **Timeline**: Reference key moments with approximate timestamps when significant topics were discussed")
-        
-        prompt_parts.extend(requirements)
-        prompt_parts.extend([
-            "",
-            "Please format the summary in clear Markdown with appropriate headers and bullet points.",
-            "Focus on technical accuracy and ensure all important information is captured.",
-            "",
-            f"{context_info}**Transcript:**",
-            transcript
-        ])
-        
-        return "\\n".join(prompt_parts)
+        return self.prompt_engine.build_individual_summary_prompt(transcript, meeting_context)
     
     def _invoke_model_with_stats(self, prompt: str, stats_context: Optional[str] = None) -> Tuple[str, Optional[ModelCallStats]]:
         """

@@ -7,6 +7,7 @@ from .config import Config
 from .bedrock_client import BedrockClient
 from .summary_writer import SummaryWriter
 from .model_statistics import ModelStatisticsTracker
+from .prompt_engine import PromptEngine
 from .utils import (
     parse_folder_name, 
     extract_summary_info, 
@@ -32,6 +33,7 @@ class GlobalSummarizer:
         self.stats_tracker = stats_tracker
         self.bedrock_client = BedrockClient(config, stats_tracker)
         self.summary_writer = SummaryWriter()
+        self.prompt_engine = PromptEngine(config)
         self.logger = setup_module_logger(__name__)
         
         self.logger.info("Global Summarizer initialized")
@@ -155,7 +157,7 @@ class GlobalSummarizer:
     
     def _build_global_summary_prompt(self, summaries: List[Dict]) -> str:
         """
-        Build the prompt for global summary generation.
+        Build the prompt for global summary generation using configurable templates.
         
         Args:
             summaries: List of individual summary data
@@ -163,46 +165,5 @@ class GlobalSummarizer:
         Returns:
             Formatted prompt string
         """
-        # Create overview of all meetings
-        meetings_overview = []
-        for i, summary in enumerate(summaries, 1):
-            overview = f"{i}. **{summary['meeting_topic']}** ({summary.get('meeting_date', 'Date unknown')})"
-            overview += f"\n   - Duration: {summary['duration']}"
-            overview += f"\n   - Participants: {len(summary.get('participants', []))} people"
-            overview += f"\n   - Key Topics: {len(summary.get('main_topics', []))} main areas"
-            meetings_overview.append(overview)
-        
-        # Combine all summary contents for analysis
-        combined_summaries = "\n\n" + "="*80 + "\n\n".join([
-            f"MEETING: {summary['meeting_topic']} ({summary.get('meeting_date', 'Unknown date')})\n" + 
-            summary['content'] for summary in summaries
-        ])
-        
-        prompt_parts = [
-            "Please analyze the following series of technical walkthrough meetings and create a comprehensive global summary.",
-            "",
-            "You should provide:",
-            "- **Executive Summary**: High-level overview of the entire walkthrough series",
-            "- **Meeting Series Overview**: List of all meetings with key details",
-            "- **Cross-Meeting Themes**: Common themes and patterns across all sessions",
-            "- **Technical Architecture Overview**: Overall technical landscape discussed",
-            "- **Key Stakeholders**: People involved across multiple sessions",
-            "- **Strategic Initiatives**: Major projects and initiatives identified",
-            "- **Technology Stack**: Technologies, platforms, and tools discussed",
-            "- **Migration & Transformation**: Any migration or modernization efforts",
-            "- **Outstanding Issues**: Common problems and challenges across meetings",
-            "- **Action Items Summary**: Consolidated action items and next steps",
-            "- **Recommendations**: Strategic recommendations based on all meetings",
-            "",
-            "Format the output in clear Markdown with appropriate headers and bullet points.",
-            "Focus on strategic insights and cross-meeting connections rather than individual meeting details.",
-            "",
-            f"**Meeting Series Overview:**",
-            *meetings_overview,
-            "",
-            "**Individual Meeting Summaries for Analysis:**",
-            combined_summaries
-        ]
-        
-        return "\n".join(prompt_parts)
+        return self.prompt_engine.build_global_summary_prompt(summaries)
     

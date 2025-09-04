@@ -58,3 +58,77 @@ keyframes:
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Prompt Templates for Model Interactions
+prompts:
+  # Individual meeting summary prompt template
+  individual_summary:
+    # Main instruction template with placeholders
+    instruction: "Please analyze the following meeting transcript and create a {summary_style} summary."
+    
+    # Requirements that can be conditionally included
+    requirements:
+      participants: "- **Participants**: List of people who spoke during the meeting"
+      main_topics: "- **Main Topics**: Key subjects discussed during the meeting"
+      key_points: "- **Key Points**: Important information, decisions, and insights shared"
+      technical_details: "- **Technical Details**: Any technical concepts, architectures, or implementations discussed"
+      action_items: "- **Action Items**: Tasks, next steps, or follow-up items mentioned"
+      decisions: "- **Decisions Made**: Any concrete decisions or conclusions reached"
+      questions_issues: "- **Questions/Issues Raised**: Important questions or problems discussed"
+      timeline: "- **Timeline**: Reference key moments with approximate timestamps when significant topics were discussed"
+    
+    # Formatting instructions
+    format_instructions: |
+      Please format the summary in clear Markdown with appropriate headers and bullet points.
+      Focus on technical accuracy and ensure all important information is captured.
+    
+    # Template structure
+    template: |
+      {instruction}
+      
+      Your summary should include:
+      {requirements}
+      
+      {format_instructions}
+      
+      {context_info}**Transcript:**
+      {transcript}
+  
+  # Global summary prompt template
+  global_summary:
+    # Main instruction for global analysis
+    instruction: "Please analyze the following series of technical walkthrough meetings and create a comprehensive global summary."
+    
+    # Required sections for global summary
+    required_sections:
+      - "- **Executive Summary**: High-level overview of the entire walkthrough series"
+      - "- **Meeting Series Overview**: List of all meetings with key details"
+      - "- **Cross-Meeting Themes**: Common themes and patterns across all sessions"
+      - "- **Technical Architecture Overview**: Overall technical landscape discussed"
+      - "- **Key Stakeholders**: People involved across multiple sessions"
+      - "- **Strategic Initiatives**: Major projects and initiatives identified"
+      - "- **Technology Stack**: Technologies, platforms, and tools discussed"
+      - "- **Migration & Transformation**: Any migration or modernization efforts"
+      - "- **Outstanding Issues**: Common problems and challenges across meetings"
+      - "- **Action Items Summary**: Consolidated action items and next steps"
+      - "- **Recommendations**: Strategic recommendations based on all meetings"
+    
+    # Formatting instructions for global summary
+    format_instructions: |
+      Format the output in clear Markdown with appropriate headers and bullet points.
+      Focus on strategic insights and cross-meeting connections rather than individual meeting details.
+    
+    # Template structure
+    template: |
+      {instruction}
+      
+      You should provide:
+      {required_sections}
+      
+      {format_instructions}
+      
+      **Meeting Series Overview:**
+      {meetings_overview}
+      
+      **Individual Meeting Summaries for Analysis:**
+      {combined_summaries}

@@ -100,13 +100,15 @@ def print_results(results, config):
     
     # Global summary
     print(f"\n🌍 Global Summary:")
-    if global_result.get('status') == 'success':
+    if global_result is None:
+        print(f"   ❌ No VTT files found to process")
+    elif global_result.get('status') == 'success':
         print(f"   ✅ Generated successfully")
         print(f"   📊 Analyzed {global_result.get('summaries_processed', 0)} summaries")
     elif global_result.get('status') == 'skipped':
         print(f"   ⏭️  Already exists")
     else:
-        print(f"   ❌ Failed: {global_result.get('error', 'Unknown error')}")
+        print(f"   ❌ Error: {global_result.get('error', 'Unknown error')}")
     
     # PDF Report
     print(f"\n📄 PDF Report:")

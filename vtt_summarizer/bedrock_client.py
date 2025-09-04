@@ -37,6 +37,24 @@ class BedrockClient:
             self.logger.error(f"Failed to initialize Bedrock client: {str(e)}")
             raise
     
+    def _is_anthropic_model(self) -> bool:
+        """
+        Check if the configured model is an Anthropic Claude model.
+        
+        Returns:
+            True if the model is an Anthropic model
+        """
+        return self.config.bedrock_model_id.startswith('anthropic.')
+    
+    def _is_openai_model(self) -> bool:
+        """
+        Check if the configured model is an OpenAI model.
+        
+        Returns:
+            True if the model is an OpenAI model
+        """
+        return self.config.bedrock_model_id.startswith('openai.')
+    
     def generate_summary(self, transcript: str, meeting_context: Optional[str] = None) -> str:
         """
         Generate a summary of the meeting transcript using Claude.
@@ -54,7 +72,7 @@ class BedrockClient:
         prompt = self._build_summary_prompt(transcript, meeting_context)
         
         try:
-            response = self._invoke_claude(prompt)
+            response = self._invoke_model(prompt)
             return response
         except Exception as e:
             self.logger.error(f"Failed to generate summary: {str(e)}")
@@ -114,32 +132,46 @@ class BedrockClient:
         
         return "\\n".join(prompt_parts)
     
-    def _invoke_claude(self, prompt: str) -> str:
+    def _invoke_model(self, prompt: str) -> str:
         """
-        Invoke Claude model with the given prompt.
+        Invoke the configured model with the given prompt.
         
         Args:
-            prompt: The prompt to send to Claude
+            prompt: The prompt to send to the model
             
         Returns:
-            Claude's response text
+            Model's response text
             
         Raises:
             ClientError: If the API call fails
             ValueError: If the response is invalid
         """
-        # Prepare the request body for Claude
-        request_body = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": self.config.bedrock_max_tokens,
-            "temperature": self.config.bedrock_temperature,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        }
+        # Determine model type and prepare request body accordingly
+        if self._is_anthropic_model():
+            request_body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": self.config.bedrock_max_tokens,
+                "temperature": self.config.bedrock_temperature,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            }
+        elif self._is_openai_model():
+            request_body = {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "max_completion_tokens": self.config.bedrock_max_tokens,
+                "temperature": self.config.bedrock_temperature
+            }
+        else:
+            raise ValueError(f"Unsupported model type: {self.config.bedrock_model_id}")
         
         max_retries = 3
         base_delay = 60  # Start with 60 seconds for throttling
@@ -175,19 +207,37 @@ class BedrockClient:
                     # Re-raise for other errors or max retries exceeded
                     raise
         
-        # Parse the response
+        # Parse the response based on model type
         try:
             response_body = json.loads(response['body'].read())
             
-            if 'content' not in response_body or not response_body['content']:
-                raise ValueError("Invalid response from Bedrock: no content")
-            
-            # Extract the text from Claude's response
-            content = response_body['content']
-            if isinstance(content, list) and len(content) > 0:
-                summary_text = content[0].get('text', '')
+            if self._is_anthropic_model():
+                # Claude response format
+                if 'content' not in response_body or not response_body['content']:
+                    raise ValueError("Invalid response from Bedrock: no content")
+                
+                content = response_body['content']
+                if isinstance(content, list) and len(content) > 0:
+                    summary_text = content[0].get('text', '')
+                else:
+                    summary_text = str(content)
+                    
+            elif self._is_openai_model():
+                # OpenAI response format
+                if 'choices' not in response_body or not response_body['choices']:
+                    raise ValueError("Invalid response from Bedrock: no choices")
+                
+                choices = response_body['choices']
+                if isinstance(choices, list) and len(choices) > 0:
+                    choice = choices[0]
+                    if 'message' in choice and 'content' in choice['message']:
+                        summary_text = choice['message']['content']
+                    else:
+                        raise ValueError("Invalid OpenAI response format")
+                else:
+                    raise ValueError("No choices in OpenAI response")
             else:
-                summary_text = str(content)
+                raise ValueError(f"Unsupported model type for response parsing: {self.config.bedrock_model_id}")
             
             if not summary_text.strip():
                 raise ValueError("Empty response from Bedrock")
@@ -212,7 +262,7 @@ class BedrockClient:
         try:
             # Try to invoke with a simple test prompt
             test_prompt = "Please respond with 'Connection successful' to test the API."
-            response = self._invoke_claude(test_prompt)
+            response = self._invoke_model(test_prompt)
             
             if "connection successful" in response.lower():
                 self.logger.info("Bedrock connection test successful")

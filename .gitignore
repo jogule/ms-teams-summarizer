@@ -75,7 +75,7 @@ venv.bak/
 
 # Inputs (media and VTT files)
 inputs/
-outputs/
+outputs*/
 
 # MacOS
 .DS_Store

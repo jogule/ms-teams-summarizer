@@ -289,12 +289,14 @@ class PDFGenerator:
                 pdf_filename = pdf_path.name
                 cmd = [
                     'pandoc',
+                    '--from=markdown',
                     markdown_filename,
                     '-o', pdf_filename,
-                    '--pdf-engine=pdflatex',
+                    '--pdf-engine=xelatex',
                     '--variable', 'geometry:margin=1in',
                     '--variable', 'fontsize=11pt',
                     '--variable', 'documentclass=article',
+                    '--variable', 'linestretch=1.2',
                 ]
                 
                 # Add TOC if enabled
@@ -357,7 +359,7 @@ class PDFGenerator:
         
         skip_until_summary = remove_title
         
-        for line in lines:
+        for i, line in enumerate(lines):
             # Skip title and meeting info if requested
             if skip_until_summary:
                 if line.strip().startswith('## Summary') or line.strip().startswith('## Analysis'):
@@ -383,6 +385,12 @@ class PDFGenerator:
                 line = line.replace('](images/', '](./images/')
             
             cleaned_lines.append(line)
+            
+            # Add blank line after bold headers if the next line is a bullet point
+            # This ensures proper markdown list formatting for pandoc
+            if (line.strip().startswith('**') and line.strip().endswith(':**') and 
+                i + 1 < len(lines) and lines[i + 1].strip().startswith('-')):
+                cleaned_lines.append('')  # Add blank line
         
         return '\n'.join(cleaned_lines).strip()
     

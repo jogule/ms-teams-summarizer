@@ -42,6 +42,7 @@ keyframes:
   min_relevance_score: 0.3   # Minimum score threshold for keyframe candidates
   image_max_width: 1200      # Maximum width for optimized keyframe images (px)
   image_quality: 100          # Image quality for optimization (0-100)
+  caption_context_window: 5   # Seconds of additional transcript context before/after keyframe segment
   
   # Intelligent delay settings (in seconds)
   # These delays help capture the actual moment rather than just announcements

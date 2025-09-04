@@ -39,7 +39,7 @@ class KeyframeExtractor:
     
     def __init__(self, max_frames: int = 5, min_relevance_score: float = 0.3, 
                  custom_delays: Dict[str, float] = None, image_max_width: int = 1200,
-                 image_quality: int = 85):
+                 image_quality: int = 85, caption_context_window: float = 5.0):
         """
         Initialize keyframe extractor.
         
@@ -49,11 +49,13 @@ class KeyframeExtractor:
             custom_delays: Optional custom delay overrides for different categories
             image_max_width: Maximum width for optimized images
             image_quality: Quality setting for image optimization
+            caption_context_window: Seconds of additional context before/after keyframe segment
         """
         self.max_frames = max_frames
         self.min_relevance_score = min_relevance_score
         self.image_max_width = image_max_width
         self.image_quality = image_quality
+        self.caption_context_window = caption_context_window
         self.logger = setup_module_logger(__name__)
         
         # Keywords that indicate potentially relevant moments with intelligent timing delays.
@@ -167,11 +169,14 @@ class KeyframeExtractor:
                 # Add intelligent delay based on content type
                 adjusted_timestamp = middle_seconds + delay
                 
+                # Extract enhanced context text using the context window
+                enhanced_context = self._extract_context_window(i, segments)
+                
                 candidate = KeyframeCandidate(
                     timestamp_seconds=adjusted_timestamp,
                     timestamp_formatted=segment.start_time,
                     relevance_score=score,
-                    context_text=segment.text,
+                    context_text=enhanced_context,
                     segment_index=i,
                     delay_seconds=delay
                 )
@@ -238,6 +243,55 @@ class KeyframeExtractor:
         
         # Cap the score at 1.0
         return min(score, 1.0), max_delay
+    
+    def _extract_context_window(self, target_segment_index: int, segments: List[TranscriptSegment]) -> str:
+        """
+        Extract enhanced context text by including segments within the context window.
+        
+        Args:
+            target_segment_index: Index of the target keyframe segment
+            segments: All transcript segments
+            
+        Returns:
+            Enhanced context text including surrounding segments within the time window
+        """
+        if not segments or target_segment_index >= len(segments):
+            return ""
+            
+        target_segment = segments[target_segment_index]
+        target_start = time_to_seconds(target_segment.start_time)
+        target_end = time_to_seconds(target_segment.end_time)
+        
+        # Define the context window boundaries
+        context_start_time = target_start - self.caption_context_window
+        context_end_time = target_end + self.caption_context_window
+        
+        # Collect segments within the context window
+        context_segments = []
+        
+        for segment in segments:
+            segment_start = time_to_seconds(segment.start_time)
+            segment_end = time_to_seconds(segment.end_time)
+            
+            # Include segment if it overlaps with the context window
+            if (segment_end >= context_start_time and segment_start <= context_end_time):
+                context_segments.append(segment)
+        
+        # Sort by start time to maintain chronological order
+        context_segments.sort(key=lambda s: time_to_seconds(s.start_time))
+        
+        # Combine the text from all context segments
+        context_text_parts = []
+        for segment in context_segments:
+            text = segment.text.strip()
+            if text:
+                # Mark the target segment for clarity
+                if segment == target_segment:
+                    context_text_parts.append(f"**{text}**")
+                else:
+                    context_text_parts.append(text)
+        
+        return " ".join(context_text_parts)
     
     def _select_best_candidates(self, candidates: List[KeyframeCandidate]) -> List[KeyframeCandidate]:
         """

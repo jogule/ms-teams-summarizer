@@ -150,6 +150,11 @@ class Config:
         }
         return self._config.get('keyframes', {}).get('delays', default_delays)
     
+    @property
+    def keyframes_caption_context_window(self) -> float:
+        """Get seconds of additional transcript context before/after keyframe segment."""
+        return self._config.get('keyframes', {}).get('caption_context_window', 5.0)
+    
     # PDF configuration properties
     @property
     def pdf_enabled(self) -> bool:

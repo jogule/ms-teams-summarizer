@@ -54,7 +54,8 @@ class ConsolidatedSummarizer:
                 min_relevance_score=self.config.keyframes_min_relevance_score,
                 custom_delays=config_delays,
                 image_max_width=self.config.keyframes_image_max_width,
-                image_quality=self.config.keyframes_image_quality
+                image_quality=self.config.keyframes_image_quality,
+                caption_context_window=self.config.keyframes_caption_context_window
             )
         else:
             self.keyframe_extractor = None

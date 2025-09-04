@@ -65,7 +65,7 @@ def print_header():
     print()
 
 
-def print_results(results, config):
+def print_results(results, config, summarizer=None):
     """Print results in a simple, clean format."""
     print()
     print("=" * 60)
@@ -132,6 +132,19 @@ def print_results(results, config):
         print(f"   ⚠️  No summaries available")
     else:
         print(f"   ❌ Failed: {pdf_result.get('error', 'Unknown error')}")
+    
+    # Model Statistics Summary
+    if summarizer and hasattr(summarizer, 'stats_tracker'):
+        session_stats = summarizer.stats_tracker.get_session_summary()
+        if session_stats['total_calls'] > 0:
+            print(f"\n🤖 Model Call Statistics:")
+            print(f"   🔢 Total calls: {session_stats['total_calls']} ({session_stats['individual_calls']} individual + {session_stats['global_calls']} global)")
+            print(f"   📊 Total tokens: {session_stats['total_tokens']:,}")
+            if session_stats['total_input_tokens'] > 0:
+                print(f"   ⬇️  Input tokens: {session_stats['total_input_tokens']:,}")
+                print(f"   ⬆️  Output tokens: {session_stats['total_output_tokens']:,}")
+            print(f"   ⚡ Average latency: {session_stats['average_latency_ms']:.0f}ms")
+            print(f"   🔴 Min/Max latency: {session_stats['min_latency_ms']:.0f}ms / {session_stats['max_latency_ms']:.0f}ms")
     
     # Summary
     print(f"\n📂 Output Location: {results.get('summaries_folder', config.output_folder)}/")
@@ -234,7 +247,6 @@ def main():
         
         # Initialize and run summarizer
         print("🚀 Starting VTT summarization...")
-        print("   📄 Processing individual VTT files...")
         
         summarizer = ConsolidatedSummarizer(
             config,
@@ -246,12 +258,8 @@ def main():
             force_overwrite=args.force
         )
         
-        print("   🌍 Processing global summary...")
-        print("   📄 Generating comprehensive PDF report...")
-        print("   ✅ All done!")
-        
         # Print results
-        print_results(results, config)
+        print_results(results, config, summarizer)
         
         print()
         print("=" * 60)

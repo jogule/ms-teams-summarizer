@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 from .config import Config
 from .bedrock_client import BedrockClient
 from .summary_writer import SummaryWriter
+from .model_statistics import ModelStatisticsTracker
 from .utils import (
     parse_folder_name, 
     extract_summary_info, 
@@ -19,15 +20,17 @@ from .utils import (
 class GlobalSummarizer:
     """Creates global summaries from individual meeting summaries."""
     
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, stats_tracker: ModelStatisticsTracker = None):
         """
         Initialize the Global Summarizer.
         
         Args:
             config: Configuration object
+            stats_tracker: Optional statistics tracker for monitoring model calls
         """
         self.config = config
-        self.bedrock_client = BedrockClient(config)
+        self.stats_tracker = stats_tracker
+        self.bedrock_client = BedrockClient(config, stats_tracker)
         self.summary_writer = SummaryWriter()
         self.logger = setup_module_logger(__name__)
         
@@ -148,7 +151,7 @@ class GlobalSummarizer:
         prompt = self._build_global_summary_prompt(summaries)
         
         # Use Claude to generate the global summary
-        return self.bedrock_client.generate_summary(prompt, "Global Walkthrough Series Analysis")
+        return self.bedrock_client.generate_summary(prompt, "Global Walkthrough Series Analysis", "global_summary")
     
     def _build_global_summary_prompt(self, summaries: List[Dict]) -> str:
         """

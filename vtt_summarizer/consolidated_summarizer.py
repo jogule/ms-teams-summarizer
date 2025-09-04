@@ -11,6 +11,7 @@ from .global_summarizer import GlobalSummarizer
 from .summary_writer import SummaryWriter
 from .keyframe_extractor import KeyframeExtractor
 from .pdf_generator import PDFGenerator
+from .model_statistics import ModelStatisticsTracker
 from .utils import (
     parse_folder_name,
     extract_summary_info,
@@ -38,9 +39,10 @@ class ConsolidatedSummarizer:
         self.config = config
         self.enable_keyframes = enable_keyframes
         self.max_keyframes = max_keyframes
+        self.stats_tracker = ModelStatisticsTracker()
         self.vtt_parser = VTTParser()
-        self.bedrock_client = BedrockClient(config)
-        self.global_summarizer = GlobalSummarizer(config)
+        self.bedrock_client = BedrockClient(config, self.stats_tracker)
+        self.global_summarizer = GlobalSummarizer(config, self.stats_tracker)
         self.summary_writer = SummaryWriter()
         
         # Initialize keyframe extractor only if enabled
@@ -258,10 +260,13 @@ class ConsolidatedSummarizer:
         summary_filename = self._format_filename(self.config.individual_summary_filename, folder_name=folder_name)
         summary_path = summaries_path / summary_filename
         
+        # Enhanced output for both verbose and default modes
+        print(f"\n📁 Processing: {folder_name}")
         self.logger.info(f"Processing: {folder_name}")
         
         # Check if summary already exists
         if summary_path.exists() and not force_overwrite:
+            print(f"   ⏭️  Already exists, skipping")
             self.logger.info(f"Summary already exists for {folder_name}, skipping")
             return {
                 "folder": folder_name,
@@ -273,6 +278,7 @@ class ConsolidatedSummarizer:
         
         try:
             # Extract transcript and segments
+            print(f"   📄 Parsing VTT file: {vtt_file.name}")
             self.logger.info(f"Parsing VTT file: {vtt_file.name}")
             start_time = time.time()
             
@@ -281,6 +287,7 @@ class ConsolidatedSummarizer:
             metadata = self.vtt_parser.get_transcript_metadata(str(vtt_file))
             
             parse_time = time.time() - start_time
+            print(f"   ✅ Parsing complete: {metadata['word_count']} words, {metadata['duration_formatted']} duration ({parse_time:.2f}s)")
             self.logger.info(f"VTT parsing completed in {parse_time:.2f}s")
             self.logger.info(f"Transcript stats: {metadata['word_count']} words, "
                            f"{metadata['duration_formatted']} duration")
@@ -293,6 +300,7 @@ class ConsolidatedSummarizer:
                 video_file = self._find_video_file(folder_path)
                 
                 if video_file:
+                    print(f"   🎥 Extracting keyframes from: {video_file.name}")
                     self.logger.info(f"Extracting keyframes from: {video_file.name}")
                     keyframe_start_time = time.time()
                     
@@ -304,28 +312,42 @@ class ConsolidatedSummarizer:
                     )
                     
                     keyframe_time = time.time() - keyframe_start_time
+                    print(f"   ✅ Keyframes extracted: {len(keyframes)} frames ({keyframe_time:.2f}s)")
                     self.logger.info(f"Keyframe extraction completed in {keyframe_time:.2f}s, "
                                    f"extracted {len(keyframes)} frames")
                 else:
+                    print(f"   🎥 No video file found, skipping keyframes")
                     self.logger.info("No video file found, skipping keyframe extraction")
             else:
+                print(f"   🎥 Keyframe extraction disabled")
                 self.logger.info("Keyframe extraction disabled")
             
             # Generate meeting context
             meeting_context = extract_meeting_context(folder_name, metadata)
             
             # Generate summary
+            print(f"   🤖 Generating summary with Claude...")
             self.logger.info("Generating summary with Claude...")
             start_time = time.time()
             
-            summary = self.bedrock_client.generate_summary(transcript, meeting_context)
+            summary = self.bedrock_client.generate_summary(transcript, meeting_context, folder_name)
             
             generation_time = time.time() - start_time
+            
+            # Get model statistics for this call
+            model_stats = self.stats_tracker.get_individual_stats(folder_name)
+            
+            print(f"   ✅ Summary generated ({generation_time:.2f}s)")
+            if model_stats:
+                print(self.stats_tracker.format_stats_for_display(model_stats))
+            
             self.logger.info(f"Summary generation completed in {generation_time:.2f}s")
             
             # Save summary with keyframes
             self.summary_writer.write_individual_summary(summary_path, summary, metadata, folder_name, keyframes)
             
+            print(f"   💾 Summary saved: {summary_filename}")
+            print(f"   ✅ Processing complete for {folder_name}")
             self.logger.info(f"Successfully processed {folder_name}")
             
             return {
@@ -339,11 +361,13 @@ class ConsolidatedSummarizer:
                     "generation_time": round(generation_time, 2),
                     "total_time": round(parse_time + keyframe_time + generation_time, 2)
                 },
+                "model_stats": model_stats.__dict__ if model_stats else None,
                 "keyframes_extracted": len(keyframes),
                 "timestamp": get_iso_timestamp()
             }
             
         except Exception as e:
+            print(f"   ❌ Error processing {folder_name}: {str(e)}")
             self.logger.error(f"Error processing {folder_name}: {str(e)}")
             return {
                 "folder": folder_name,
@@ -368,6 +392,7 @@ class ConsolidatedSummarizer:
         
         # Check if global summary already exists
         if global_summary_path.exists() and not force_overwrite:
+            print(f"\n🌍 Global summary already exists, skipping")
             self.logger.info("Global summary already exists, skipping")
             return {
                 "status": "skipped",
@@ -377,9 +402,11 @@ class ConsolidatedSummarizer:
             }
         
         # Collect individual summaries from summaries folder
+        print(f"\n🌍 Generating global summary...")
         summaries = self._collect_summaries_from_folder(summaries_path)
         
         if not summaries:
+            print(f"   ⚠️ No individual summaries found")
             self.logger.warning("No individual summaries found for global summary")
             return {
                 "status": "no_summaries",
@@ -387,17 +414,27 @@ class ConsolidatedSummarizer:
                 "timestamp": get_iso_timestamp()
             }
         
+        print(f"   📄 Found {len(summaries)} individual summaries to aggregate")
         self.logger.info(f"Found {len(summaries)} individual summaries to aggregate")
         
         try:
+            print(f"   🤖 Generating global summary with Claude...")
             self.logger.info("Generating global summary with Claude...")
             with ProcessingTimer("Global summary generation") as timer:
                 global_content = self.global_summarizer._generate_global_content(summaries)
+            
+            # Get model statistics for global summary
+            global_stats = self.stats_tracker.get_global_stats()
+            
+            print(f"   ✅ Global summary generated ({timer.duration_rounded}s)")
+            if global_stats:
+                print(self.stats_tracker.format_stats_for_display(global_stats))
             
             self.logger.info(f"Global summary generation completed in {timer.duration_rounded}s")
             
             # Save global summary
             self.summary_writer.write_global_summary(global_summary_path, global_content, summaries)
+            print(f"   💾 Global summary saved: {global_summary_filename}")
             
             return {
                 "status": "success",
@@ -408,6 +445,7 @@ class ConsolidatedSummarizer:
             }
             
         except Exception as e:
+            print(f"   ❌ Error generating global summary: {str(e)}")
             self.logger.error(f"Error generating global summary: {str(e)}")
             return {
                 "status": "error",

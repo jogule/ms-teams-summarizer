@@ -518,7 +518,7 @@ class TestE2EUtilities(unittest.TestCase):
 
 def run_e2e_tests():
     """Run the complete E2E test suite."""
-    print("🎯 Starting HCA VTT Summarizer E2E Test Suite")
+    print("🎯 Starting VTT Summarizer E2E Test Suite")
     print("=" * 60)
     
     # Create test suite

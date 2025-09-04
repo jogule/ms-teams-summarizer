@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test Runner for HCA VTT Summarizer
+Test Runner for VTT Summarizer
 
 This script provides a convenient way to run different types of tests:
 - E2E tests (end-to-end integration tests)
@@ -62,7 +62,7 @@ def run_all_tests():
 def main():
     """Main test runner function."""
     parser = argparse.ArgumentParser(
-        description="Test Runner for HCA VTT Summarizer",
+        description="Test Runner for VTT Summarizer",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

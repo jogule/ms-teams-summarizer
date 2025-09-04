@@ -1,5 +1,5 @@
 """
-Test Suite for HCA VTT Summarizer
+Test Suite for VTT Summarizer
 
 This package contains all tests for the VTT Summarizer application:
 - E2E tests: Complete workflow validation

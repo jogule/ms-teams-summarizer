@@ -1,4 +1,4 @@
-"""PDF generation module using consolidated markdown approach."""
+"""Report generation module for creating comprehensive meeting reports in multiple formats."""
 
 import re
 import subprocess
@@ -36,12 +36,12 @@ from .utils import (
 )
 
 
-class PDFGenerator:
-    """Generates comprehensive PDF reports from consolidated markdown files."""
+class ReportGenerator:
+    """Generates comprehensive reports in multiple formats from meeting summaries."""
     
     def __init__(self, config: Config):
         """
-        Initialize the PDF Generator.
+        Initialize the Report Generator.
         
         Args:
             config: Configuration object
@@ -55,7 +55,7 @@ class PDFGenerator:
                 "PDF generation will create consolidated markdown only."
             )
         else:
-            self.logger.info(f"PDF Generator initialized using {CONVERTER_COMMAND}")
+            self.logger.info(f"Report Generator initialized using {CONVERTER_COMMAND}")
     
     def generate_comprehensive_pdf(
         self, 

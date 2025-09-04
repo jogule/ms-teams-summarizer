@@ -1,24 +1,24 @@
-"""Prompt template engine for configurable prompt generation."""
+"""Template builder for creating AI prompts from configurable templates."""
 
 from typing import Dict, List, Any, Optional
 from .config import Config
 
 
-class PromptEngine:
-    """Handles prompt template generation and substitution."""
+class TemplateBuilder:
+    """Handles AI prompt template creation and variable substitution."""
     
     def __init__(self, config: Config):
         """
-        Initialize the prompt engine.
+        Initialize the template builder.
         
         Args:
-            config: Configuration object with prompt templates
+            config: Configuration object with template definitions
         """
         self.config = config
     
     def build_individual_summary_prompt(self, transcript: str, meeting_context: Optional[str] = None) -> str:
         """
-        Build an individual summary prompt using configured templates.
+        Build an individual meeting summary prompt using configured templates.
         
         Args:
             transcript: The meeting transcript text
@@ -54,7 +54,7 @@ class PromptEngine:
     
     def build_global_summary_prompt(self, summaries: List[Dict[str, Any]]) -> str:
         """
-        Build a global summary prompt using configured templates.
+        Build a global meeting analysis prompt using configured templates.
         
         Args:
             summaries: List of individual summary data

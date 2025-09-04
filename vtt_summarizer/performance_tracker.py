@@ -1,4 +1,4 @@
-"""Model statistics tracking for monitoring token usage, call counts, and performance metrics."""
+"""Performance tracking for monitoring AI model usage, costs, and response times."""
 
 import time
 from dataclasses import dataclass, field
@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 
 @dataclass
 class ModelCallStats:
-    """Statistics for a single model call."""
+    """Performance statistics for a single AI model call."""
     tokens_used: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
@@ -21,13 +21,13 @@ class ModelCallStats:
         return self.latency_ms / 1000.0
 
 
-class ModelStatisticsTracker:
-    """Tracks model call statistics across the entire processing session."""
+class PerformanceTracker:
+    """Tracks AI model performance metrics across the entire processing session."""
     
     def __init__(self):
-        """Initialize the statistics tracker."""
+        """Initialize the performance tracker."""
         self.individual_calls: Dict[str, ModelCallStats] = {}
-        self.global_calls: Dict[str, ModelCallStats] = {}
+        self.analysis_calls: Dict[str, ModelCallStats] = {}
         self.session_start = time.time()
     
     def start_call(self, context: str) -> float:
@@ -43,15 +43,15 @@ class ModelStatisticsTracker:
         return time.time()
     
     def record_call(self, context: str, start_time: float, response_data: Dict[str, Any], 
-                   is_global: bool = False) -> ModelCallStats:
+                   is_analysis: bool = False) -> ModelCallStats:
         """
-        Record a completed model call with its statistics.
+        Record a completed AI model call with its performance metrics.
         
         Args:
-            context: Context identifier (e.g., folder name or "global_summary")
+            context: Context identifier (e.g., folder name or "global_analysis")
             start_time: Start time from start_call()
             response_data: Response data from the model API
-            is_global: Whether this is a global summary call
+            is_analysis: Whether this is a global analysis call
             
         Returns:
             ModelCallStats object with recorded statistics
@@ -79,8 +79,8 @@ class ModelStatisticsTracker:
         )
         
         # Store in appropriate collection
-        if is_global:
-            self.global_calls[context] = stats
+        if is_analysis:
+            self.analysis_calls[context] = stats
         else:
             self.individual_calls[context] = stats
         
@@ -127,14 +127,14 @@ class ModelStatisticsTracker:
         """
         return self.individual_calls.get(folder_name)
     
-    def get_global_stats(self) -> Optional[ModelCallStats]:
+    def get_analysis_stats(self) -> Optional[ModelCallStats]:
         """
-        Get statistics for global summary processing.
+        Get statistics for global analysis processing.
         
         Returns:
             ModelCallStats if available, None otherwise
         """
-        return self.global_calls.get('global_summary')
+        return self.analysis_calls.get('global_analysis')
     
     def get_session_summary(self) -> Dict[str, Any]:
         """
@@ -143,7 +143,7 @@ class ModelStatisticsTracker:
         Returns:
             Dictionary with session-wide statistics
         """
-        all_stats = list(self.individual_calls.values()) + list(self.global_calls.values())
+        all_stats = list(self.individual_calls.values()) + list(self.analysis_calls.values())
         
         if not all_stats:
             return {
@@ -162,7 +162,7 @@ class ModelStatisticsTracker:
         return {
             'total_calls': total_calls,
             'individual_calls': len(self.individual_calls),
-            'global_calls': len(self.global_calls),
+            'analysis_calls': len(self.analysis_calls),
             'total_tokens': total_tokens,
             'total_input_tokens': sum(stat.input_tokens for stat in all_stats),
             'total_output_tokens': sum(stat.output_tokens for stat in all_stats),

@@ -1,4 +1,4 @@
-"""AWS Bedrock client for generating summaries using Claude models."""
+"""AI client for generating summaries using various AI models via AWS Bedrock."""
 
 import json
 import boto3
@@ -9,32 +9,32 @@ import random
 
 from .config import Config
 from .utils import setup_module_logger
-from .model_statistics import ModelStatisticsTracker, ModelCallStats
-from .prompt_engine import PromptEngine
+from .performance_tracker import PerformanceTracker, ModelCallStats
+from .template_builder import TemplateBuilder
 
 
-class BedrockClient:
-    """Client for interacting with AWS Bedrock models."""
+class AIClient:
+    """Client for interacting with AI models via AWS Bedrock."""
     
-    def __init__(self, config: Config, stats_tracker: Optional[ModelStatisticsTracker] = None):
+    def __init__(self, config: Config, performance_tracker: Optional[PerformanceTracker] = None):
         """
-        Initialize Bedrock client.
+        Initialize AI client.
         
         Args:
             config: Configuration object
-            stats_tracker: Optional statistics tracker for monitoring model calls
+            performance_tracker: Optional tracker for monitoring model performance
         """
         self.config = config
         self.logger = setup_module_logger(__name__)
-        self.stats_tracker = stats_tracker
-        self.prompt_engine = PromptEngine(config)
+        self.performance_tracker = performance_tracker
+        self.template_builder = TemplateBuilder(config)
         
         try:
             self.bedrock_runtime = boto3.client(
                 'bedrock-runtime',
                 region_name=self.config.aws_region
             )
-            self.logger.info(f"Initialized Bedrock client for region: {self.config.aws_region}")
+            self.logger.info(f"Initialized AI client for region: {self.config.aws_region}")
         except NoCredentialsError:
             self.logger.error("AWS credentials not found")
             raise
@@ -60,10 +60,10 @@ class BedrockClient:
         """
         return self.config.bedrock_model_id.startswith('openai.')
     
-    def generate_summary(self, transcript: str, meeting_context: Optional[str] = None, 
-                        stats_context: Optional[str] = None) -> str:
+    def create_summary(self, transcript: str, meeting_context: Optional[str] = None, 
+                      stats_context: Optional[str] = None) -> str:
         """
-        Generate a summary of the meeting transcript using Claude.
+        Generate a summary of the meeting transcript using AI models.
         
         Args:
             transcript: The full transcript text
@@ -79,7 +79,7 @@ class BedrockClient:
         prompt = self._build_summary_prompt(transcript, meeting_context)
         
         try:
-            response, stats = self._invoke_model_with_stats(prompt, stats_context)
+            response, stats = self._call_ai_model(prompt, stats_context)
             return response
         except Exception as e:
             self.logger.error(f"Failed to generate summary: {str(e)}")
@@ -87,7 +87,7 @@ class BedrockClient:
     
     def _build_summary_prompt(self, transcript: str, meeting_context: Optional[str] = None) -> str:
         """
-        Build the prompt for Claude to generate a meeting summary using configurable templates.
+        Build the prompt for AI models to generate a meeting summary using configurable templates.
         
         Args:
             transcript: The meeting transcript
@@ -96,9 +96,9 @@ class BedrockClient:
         Returns:
             Formatted prompt string
         """
-        return self.prompt_engine.build_individual_summary_prompt(transcript, meeting_context)
+        return self.template_builder.build_individual_summary_prompt(transcript, meeting_context)
     
-    def _invoke_model_with_stats(self, prompt: str, stats_context: Optional[str] = None) -> Tuple[str, Optional[ModelCallStats]]:
+    def _call_ai_model(self, prompt: str, stats_context: Optional[str] = None) -> Tuple[str, Optional[ModelCallStats]]:
         """
         Invoke the configured model with the given prompt and track statistics.
         
@@ -113,38 +113,38 @@ class BedrockClient:
             ClientError: If the API call fails
             ValueError: If the response is invalid
         """
-        # Start timing if we have a stats tracker
-        start_time = self.stats_tracker.start_call(stats_context) if self.stats_tracker else time.time()
+        # Start timing if we have a performance tracker
+        start_time = self.performance_tracker.start_call(stats_context) if self.performance_tracker else time.time()
         
         try:
             response_text = self._invoke_model(prompt)
             
             # Record statistics if tracker is available
             stats = None
-            if self.stats_tracker and stats_context:
+            if self.performance_tracker and stats_context:
                 # Create mock response data for statistics (since we don't have actual usage data from Bedrock)
                 response_data = {
                     'content': response_text,
                     'model_id': self.config.bedrock_model_id
                 }
-                stats = self.stats_tracker.record_call(
+                stats = self.performance_tracker.record_call(
                     stats_context, start_time, response_data, 
-                    is_global=stats_context == 'global_summary'
+                    is_analysis=stats_context == 'global_analysis'
                 )
             
             return response_text, stats
             
         except Exception as e:
             # Still record failed call statistics if possible
-            if self.stats_tracker and stats_context:
+            if self.performance_tracker and stats_context:
                 response_data = {
                     'content': '',
                     'model_id': self.config.bedrock_model_id,
                     'error': str(e)
                 }
-                self.stats_tracker.record_call(
+                self.performance_tracker.record_call(
                     stats_context, start_time, response_data,
-                    is_global=stats_context == 'global_summary'
+                    is_analysis=stats_context == 'global_analysis'
                 )
             raise
     
@@ -278,7 +278,7 @@ class BedrockClient:
         try:
             # Try to invoke with a simple test prompt
             test_prompt = "Please respond with 'Connection successful' to test the API."
-            response, _ = self._invoke_model_with_stats(test_prompt)
+            response, _ = self._call_ai_model(test_prompt)
             
             if "connection successful" in response.lower():
                 self.logger.info("Bedrock connection test successful")

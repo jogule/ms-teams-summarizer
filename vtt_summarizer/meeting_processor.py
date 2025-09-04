@@ -1,17 +1,17 @@
-"""Consolidated summarizer that handles both individual and global summaries in one workflow."""
+"""Main meeting processor that handles individual summaries and global analysis."""
 
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import time
 
 from .config import Config
-from .vtt_parser import VTTParser
-from .bedrock_client import BedrockClient
-from .global_summarizer import GlobalSummarizer
-from .summary_writer import SummaryWriter
-from .keyframe_extractor import KeyframeExtractor
-from .pdf_generator import PDFGenerator
-from .model_statistics import ModelStatisticsTracker
+from .transcript_parser import TranscriptParser
+from .ai_client import AIClient
+from .meeting_analyzer import MeetingAnalyzer
+from .file_writer import FileWriter
+from .video_processor import VideoProcessor
+from .report_generator import ReportGenerator
+from .performance_tracker import PerformanceTracker
 from .utils import (
     parse_folder_name,
     extract_summary_info,
@@ -24,12 +24,12 @@ from .utils import (
 )
 
 
-class ConsolidatedSummarizer:
-    """Handles both individual VTT processing and global summary generation."""
+class MeetingProcessor:
+    """Processes meeting transcripts and generates individual summaries and global analysis."""
     
     def __init__(self, config: Config, enable_keyframes: bool = True, max_keyframes: int = 5):
         """
-        Initialize the Consolidated Summarizer.
+        Initialize the Meeting Processor.
         
         Args:
             config: Configuration object
@@ -39,17 +39,17 @@ class ConsolidatedSummarizer:
         self.config = config
         self.enable_keyframes = enable_keyframes
         self.max_keyframes = max_keyframes
-        self.stats_tracker = ModelStatisticsTracker()
-        self.vtt_parser = VTTParser()
-        self.bedrock_client = BedrockClient(config, self.stats_tracker)
-        self.global_summarizer = GlobalSummarizer(config, self.stats_tracker)
-        self.summary_writer = SummaryWriter()
+        self.performance_tracker = PerformanceTracker()
+        self.transcript_parser = TranscriptParser()
+        self.ai_client = AIClient(config, self.performance_tracker)
+        self.meeting_analyzer = MeetingAnalyzer(config, self.performance_tracker)
+        self.file_writer = FileWriter()
         
-        # Initialize keyframe extractor only if enabled
+        # Initialize video processor only if enabled
         if self.enable_keyframes:
             # Use configuration values with CLI overrides
             config_delays = self.config.keyframes_delays
-            self.keyframe_extractor = KeyframeExtractor(
+            self.video_processor = VideoProcessor(
                 max_frames=max_keyframes,
                 min_relevance_score=self.config.keyframes_min_relevance_score,
                 custom_delays=config_delays,
@@ -58,14 +58,14 @@ class ConsolidatedSummarizer:
                 caption_context_window=self.config.keyframes_caption_context_window
             )
         else:
-            self.keyframe_extractor = None
+            self.video_processor = None
         
-        # Initialize PDF generator
-        self.pdf_generator = PDFGenerator(config)
+        # Initialize report generator
+        self.report_generator = ReportGenerator(config)
             
         self.logger = setup_module_logger(__name__)
         
-        self.logger.info("Consolidated Summarizer initialized")
+        self.logger.info("Meeting Processor initialized")
         self.logger.info(f"Input folder: {self.config.input_folder}")
         self.logger.info(f"Using model: {self.config.bedrock_model_id}")
     
@@ -120,9 +120,9 @@ class ConsolidatedSummarizer:
         # Fallback: use stem (filename without extension)
         return summary_file.stem
     
-    def summarize_all(self, force_overwrite: bool = False, summaries_folder: str = "summaries") -> Dict[str, any]:
+    def process_meetings(self, force_overwrite: bool = False, summaries_folder: str = "summaries") -> Dict[str, any]:
         """
-        Complete workflow: process all VTT files and generate global summary.
+        Complete workflow: process all meeting files and generate analysis.
         
         Args:
             force_overwrite: Whether to overwrite existing summary files
@@ -154,19 +154,19 @@ class ConsolidatedSummarizer:
                     "timestamp": get_iso_timestamp()
                 }
             
-            # Step 2: Generate global summary
+            # Step 2: Generate global analysis
             self.logger.info("=" * 60)
-            self.logger.info("STEP 2: GENERATING GLOBAL SUMMARY")
-            self.logger.info("=" * 60)
-            
-            global_result = self._generate_consolidated_global_summary(summaries_path, force_overwrite)
-            
-            # Step 3: Generate comprehensive PDF report
-            self.logger.info("=" * 60)
-            self.logger.info("STEP 3: GENERATING COMPREHENSIVE PDF REPORT")
+            self.logger.info("STEP 2: GENERATING GLOBAL ANALYSIS")
             self.logger.info("=" * 60)
             
-            pdf_result = self._generate_pdf_report(summaries_path, individual_results["results"], force_overwrite)
+            global_result = self._create_global_analysis(summaries_path, force_overwrite)
+            
+            # Step 3: Generate final report
+            self.logger.info("=" * 60)
+            self.logger.info("STEP 3: GENERATING FINAL REPORT")
+            self.logger.info("=" * 60)
+            
+            pdf_result = self._create_final_report(summaries_path, individual_results["results"], force_overwrite)
         
         result = {
             "status": "success",
@@ -198,14 +198,14 @@ class ConsolidatedSummarizer:
         if not walkthroughs_path.exists():
             raise FileNotFoundError(f"Walkthroughs directory not found: {walkthroughs_path}")
         
-        # Find all subdirectories with VTT files
-        vtt_folders = self._find_vtt_folders(walkthroughs_path)
+        # Find all subdirectories with meeting files
+        meeting_folders = self._find_meeting_folders(walkthroughs_path)
         
-        if not vtt_folders:
-            self.logger.warning("No VTT files found in walkthroughs directory")
+        if not meeting_folders:
+            self.logger.warning("No meeting files found in input directory")
             return {"processed": 0, "errors": 0, "skipped": 0, "results": []}
         
-        self.logger.info(f"Found {len(vtt_folders)} folders with VTT files")
+        self.logger.info(f"Found {len(meeting_folders)} folders with meeting files")
         
         results = {
             "processed": 0,
@@ -213,13 +213,13 @@ class ConsolidatedSummarizer:
             "skipped": 0,
             "results": [],
             "start_time": get_iso_timestamp(),
-            "total_folders": len(vtt_folders)
+            "total_folders": len(meeting_folders)
         }
         
         # Process each folder
-        for folder_path, vtt_file in vtt_folders:
+        for folder_path, meeting_file in meeting_folders:
             try:
-                result = self._process_single_vtt(folder_path, vtt_file, summaries_path, force_overwrite)
+                result = self._process_single_meeting(folder_path, meeting_file, summaries_path, force_overwrite)
                 results["results"].append(result)
                 
                 if result["status"] == "success":
@@ -243,14 +243,14 @@ class ConsolidatedSummarizer:
         
         return results
     
-    def _process_single_vtt(self, folder_path: Path, vtt_file: Path, summaries_path: Path, 
-                           force_overwrite: bool) -> Dict[str, any]:
+    def _process_single_meeting(self, folder_path: Path, meeting_file: Path, summaries_path: Path, 
+                               force_overwrite: bool) -> Dict[str, any]:
         """
-        Process a single VTT file and save summary to summaries folder.
+        Process a single meeting file and save summary to summaries folder.
         
         Args:
-            folder_path: Path to the walkthrough folder
-            vtt_file: Path to the VTT file
+            folder_path: Path to the meeting folder
+            meeting_file: Path to the meeting transcript file
             summaries_path: Path to summaries output directory
             force_overwrite: Whether to overwrite existing files
             
@@ -279,17 +279,17 @@ class ConsolidatedSummarizer:
         
         try:
             # Extract transcript and segments
-            print(f"   📄 Parsing VTT file: {vtt_file.name}")
-            self.logger.info(f"Parsing VTT file: {vtt_file.name}")
+            print(f"   📄 Parsing transcript file: {meeting_file.name}")
+            self.logger.info(f"Parsing transcript file: {meeting_file.name}")
             start_time = time.time()
             
-            transcript = self.vtt_parser.extract_full_transcript(str(vtt_file))
-            segments = self.vtt_parser.parse_file(str(vtt_file))  # Get segments for keyframe extraction
-            metadata = self.vtt_parser.get_transcript_metadata(str(vtt_file))
+            transcript = self.transcript_parser.extract_full_transcript(str(meeting_file))
+            segments = self.transcript_parser.parse_file(str(meeting_file))  # Get segments for keyframe extraction
+            metadata = self.transcript_parser.get_transcript_metadata(str(meeting_file))
             
             parse_time = time.time() - start_time
             print(f"   ✅ Parsing complete: {metadata['word_count']} words, {metadata['duration_formatted']} duration ({parse_time:.2f}s)")
-            self.logger.info(f"VTT parsing completed in {parse_time:.2f}s")
+            self.logger.info(f"Transcript parsing completed in {parse_time:.2f}s")
             self.logger.info(f"Transcript stats: {metadata['word_count']} words, "
                            f"{metadata['duration_formatted']} duration")
             
@@ -308,7 +308,7 @@ class ConsolidatedSummarizer:
                     images_dir = summaries_path / "images"
                     base_filename = f"{folder_name}_summary"
                     
-                    keyframes = self.keyframe_extractor.extract_keyframes(
+                    keyframes = self.video_processor.extract_keyframes(
                         str(video_file), segments, str(images_dir), base_filename
                     )
                     
@@ -331,21 +331,21 @@ class ConsolidatedSummarizer:
             self.logger.info("Generating summary with Claude...")
             start_time = time.time()
             
-            summary = self.bedrock_client.generate_summary(transcript, meeting_context, folder_name)
+            summary = self.ai_client.create_summary(transcript, meeting_context, folder_name)
             
             generation_time = time.time() - start_time
             
             # Get model statistics for this call
-            model_stats = self.stats_tracker.get_individual_stats(folder_name)
+            model_stats = self.performance_tracker.get_individual_stats(folder_name)
             
             print(f"   ✅ Summary generated ({generation_time:.2f}s)")
             if model_stats:
-                print(self.stats_tracker.format_stats_for_display(model_stats))
+                print(self.performance_tracker.format_stats_for_display(model_stats))
             
             self.logger.info(f"Summary generation completed in {generation_time:.2f}s")
             
             # Save summary with keyframes
-            self.summary_writer.write_individual_summary(summary_path, summary, metadata, folder_name, keyframes)
+            self.file_writer.write_individual_summary(summary_path, summary, metadata, folder_name, keyframes)
             
             print(f"   💾 Summary saved: {summary_filename}")
             print(f"   ✅ Processing complete for {folder_name}")
@@ -377,7 +377,7 @@ class ConsolidatedSummarizer:
                 "timestamp": get_iso_timestamp()
             }
     
-    def _generate_consolidated_global_summary(self, summaries_path: Path, force_overwrite: bool) -> Dict[str, any]:
+    def _create_global_analysis(self, summaries_path: Path, force_overwrite: bool) -> Dict[str, any]:
         """
         Generate global summary from individual summaries in the summaries folder.
         
@@ -422,19 +422,19 @@ class ConsolidatedSummarizer:
             print(f"   🤖 Generating global summary with Claude...")
             self.logger.info("Generating global summary with Claude...")
             with ProcessingTimer("Global summary generation") as timer:
-                global_content = self.global_summarizer._generate_global_content(summaries)
+                global_content = self.meeting_analyzer._create_global_content(summaries)
             
-            # Get model statistics for global summary
-            global_stats = self.stats_tracker.get_global_stats()
+            # Get model statistics for global analysis
+            global_stats = self.performance_tracker.get_analysis_stats()
             
             print(f"   ✅ Global summary generated ({timer.duration_rounded}s)")
             if global_stats:
-                print(self.stats_tracker.format_stats_for_display(global_stats))
+                print(self.performance_tracker.format_stats_for_display(global_stats))
             
             self.logger.info(f"Global summary generation completed in {timer.duration_rounded}s")
             
-            # Save global summary
-            self.summary_writer.write_global_summary(global_summary_path, global_content, summaries)
+            # Save global analysis
+            self.file_writer.write_global_summary(global_summary_path, global_content, summaries)
             print(f"   💾 Global summary saved: {global_summary_filename}")
             
             return {
@@ -501,34 +501,34 @@ class ConsolidatedSummarizer:
         
         return summaries
     
-    def _find_vtt_folders(self, walkthroughs_path: Path) -> List[Tuple[Path, Path]]:
+    def _find_meeting_folders(self, input_path: Path) -> List[Tuple[Path, Path]]:
         """
-        Find all folders containing VTT files.
+        Find all folders containing meeting transcript files.
         
         Args:
-            walkthroughs_path: Path to walkthroughs directory
+            input_path: Path to input directory
             
         Returns:
-            List of tuples (folder_path, vtt_file_path)
+            List of tuples (folder_path, meeting_file_path)
         """
-        vtt_folders = []
+        meeting_folders = []
         
-        for item in walkthroughs_path.iterdir():
+        for item in input_path.iterdir():
             if item.is_dir():
                 # Look for input files using configurable patterns
-                vtt_files = []
+                meeting_files = []
                 for pattern in self.config.input_file_patterns:
-                    vtt_files.extend(item.glob(pattern))
+                    meeting_files.extend(item.glob(pattern))
                 
-                if vtt_files:
-                    # Use the first VTT file found (there should typically be only one)
-                    vtt_file = vtt_files[0]
-                    vtt_folders.append((item, vtt_file))
+                if meeting_files:
+                    # Use the first meeting file found (there should typically be only one)
+                    meeting_file = meeting_files[0]
+                    meeting_folders.append((item, meeting_file))
                     
-                    if len(vtt_files) > 1:
-                        self.logger.warning(f"Multiple VTT files found in {item.name}, using {vtt_file.name}")
+                    if len(meeting_files) > 1:
+                        self.logger.warning(f"Multiple meeting files found in {item.name}, using {meeting_file.name}")
         
-        return vtt_folders
+        return meeting_folders
     
     def _find_video_file(self, folder_path: Path) -> Optional[Path]:
         """
@@ -557,60 +557,8 @@ class ConsolidatedSummarizer:
         global_result = results["global_result"]
         pdf_result = results.get("pdf_result", {})
         
-    def _generate_pdf_report(self, summaries_path: Path, individual_results: List[Dict], force_overwrite: bool) -> Dict[str, any]:
-        """
-        Generate comprehensive PDF report from all summaries.
-        
-        Args:
-            summaries_path: Path to summaries directory
-            individual_results: List of individual processing results
-            force_overwrite: Whether to overwrite existing PDF
-            
-        Returns:
-            Dictionary with PDF generation result
-        """
-        try:
-            # Find global summary file
-            global_summary_filename = self._format_filename(self.config.global_summary_filename)
-            global_summary_path = summaries_path / global_summary_filename
-            
-            # Filter successful individual summaries for PDF and ensure they have folder_name
-            successful_summaries = []
-            for result in individual_results:
-                if result.get('status') == 'success':
-                    # Ensure the result has folder_name (use 'folder' if 'folder_name' is missing)
-                    if 'folder_name' not in result and 'folder' in result:
-                        result['folder_name'] = result['folder']
-                    successful_summaries.append(result)
-            
-            if not successful_summaries:
-                self.logger.warning("No successful individual summaries found for PDF generation")
-                return {
-                    "status": "no_summaries",
-                    "message": "No individual summaries available for PDF generation",
-                    "timestamp": get_iso_timestamp()
-                }
-            
-            self.logger.info(f"Generating PDF with {len(successful_summaries)} individual summaries")
-            
-            # Generate PDF
-            return self.pdf_generator.generate_comprehensive_pdf(
-                summaries_path,
-                global_summary_path,
-                successful_summaries,
-                force_overwrite
-            )
-            
-        except Exception as e:
-            self.logger.error(f"Error during PDF generation: {str(e)}")
-            return {
-                "status": "error",
-                "error": str(e),
-                "timestamp": get_iso_timestamp()
-            }
-    
         self.logger.info("="*80)
-        self.logger.info("CONSOLIDATED SUMMARIZATION COMPLETE")
+        self.logger.info("MEETING PROCESSING COMPLETE")
         self.logger.info("="*80)
         self.logger.info(f"Total processing time: {results['total_time']}s")
         self.logger.info(f"Summaries folder: {results['summaries_folder']}")
@@ -621,15 +569,15 @@ class ConsolidatedSummarizer:
         self.logger.info(f"  Skipped (already exist): {individual['skipped']}")
         self.logger.info(f"  Errors encountered: {individual['errors']}")
         self.logger.info("")
-        self.logger.info("GLOBAL SUMMARY:")
-        if global_result['status'] == 'success':
+        self.logger.info("GLOBAL ANALYSIS:")
+        if global_result and global_result.get('status') == 'success':
             self.logger.info(f"  ✅ Generated successfully")
-            self.logger.info(f"  📊 Processed {global_result['summaries_processed']} summaries")
-            self.logger.info(f"  ⏱️  Generation time: {global_result['generation_time']}s")
+            self.logger.info(f"  📊 Processed {global_result.get('summaries_processed', 0)} summaries")
+            self.logger.info(f"  ⏱️  Generation time: {global_result.get('generation_time', 0)}s")
         else:
-            self.logger.info(f"  ❌ {global_result.get('message', 'Failed')}")
+            self.logger.info(f"  ❌ {global_result.get('message', 'Failed') if global_result else 'Failed'}")
         self.logger.info("")
-        self.logger.info("PDF REPORT:")
+        self.logger.info("FINAL REPORT:")
         if pdf_result.get('status') == 'success':
             self.logger.info(f"  ✅ Generated successfully")
             self.logger.info(f"  📄 PDF file: {pdf_result.get('pdf_filename', 'Unknown')}")
@@ -648,3 +596,61 @@ class ConsolidatedSummarizer:
             self.logger.warning("Some folders had errors - check logs above for details")
         
         self.logger.info("="*80)
+    
+    def _create_final_report(self, summaries_path: Path, individual_results: List[Dict], force_overwrite: bool) -> Dict[str, any]:
+        """
+        Create final comprehensive report from all summaries.
+        
+        Args:
+            summaries_path: Path to summaries directory
+            individual_results: List of individual processing results
+            force_overwrite: Whether to overwrite existing PDF
+            
+        Returns:
+            Dictionary with PDF generation result
+        """
+        try:
+            # Find global summary file
+            global_summary_filename = self._format_filename(self.config.global_summary_filename)
+            global_summary_path = summaries_path / global_summary_filename
+            
+            # Filter individual summaries for PDF - include both successful and skipped ones
+            # since skipped means they already exist and are available
+            available_summaries = []
+            for result in individual_results:
+                if result.get('status') in ['success', 'skipped']:
+                    # Ensure the result has folder_name (use 'folder' if 'folder_name' is missing)
+                    if 'folder_name' not in result and 'folder' in result:
+                        result['folder_name'] = result['folder']
+                    # For skipped files, we need to add the summary_path if missing
+                    if result.get('status') == 'skipped' and 'summary_path' not in result:
+                        folder_name = result.get('folder_name', result.get('folder', 'unknown'))
+                        summary_filename = self._format_filename(self.config.individual_summary_filename, folder_name=folder_name)
+                        result['summary_path'] = str(summaries_path / summary_filename)
+                    available_summaries.append(result)
+            
+            if not available_summaries:
+                self.logger.warning("No individual summaries found for PDF generation")
+                return {
+                    "status": "no_summaries",
+                    "message": "No individual summaries available for PDF generation",
+                    "timestamp": get_iso_timestamp()
+                }
+            
+            self.logger.info(f"Generating PDF with {len(available_summaries)} individual summaries")
+            
+            # Generate final report
+            return self.report_generator.generate_comprehensive_pdf(
+                summaries_path,
+                global_summary_path,
+                available_summaries,
+                force_overwrite
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Error during PDF generation: {str(e)}")
+            return {
+                "status": "error",
+                "error": str(e),
+                "timestamp": get_iso_timestamp()
+            }

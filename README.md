@@ -1,6 +1,6 @@
-# VTT Summarizer 🚀
+# Meeting Processor 🚀
 
-AI-powered meeting summarizer that processes VTT transcripts and video files to generate comprehensive summaries with keyframe extraction and PDF reports.
+AI-powered meeting processor that analyzes transcript files and video recordings to generate comprehensive summaries with video screenshot extraction and comprehensive reports.
 
 ## Quick Start
 
@@ -79,9 +79,9 @@ python3 main.py --max-keyframes 3
 
 The tool generates:
 - **Individual summaries**: `outputs/[folder]_summary.md`
-- **Global summary**: `outputs/global_summary.md` 
-- **Keyframe images**: `outputs/images/[folder]_summary_N.png`
-- **PDF report**: `outputs/complete_summary_report_YYYY-MM-DD.pdf`
+- **Global analysis**: `outputs/global_summary.md` 
+- **Video screenshots**: `outputs/images/[folder]_summary_N.png`
+- **Comprehensive report**: `outputs/complete_summary_report_YYYY-MM-DD.pdf`
 
 ## Configuration
 
@@ -112,19 +112,19 @@ pdf:
 ## Features
 
 - ✅ **Multi-model AI support** - Claude, GPT via AWS Bedrock
-- ✅ **Smart keyframe extraction** - Intelligent timing with context
+- ✅ **Smart video processing** - Intelligent screenshot extraction with context
 - ✅ **Comprehensive summaries** - Participants, topics, action items
-- ✅ **Global analysis** - Cross-meeting insights and patterns
-- ✅ **PDF reports** - Professional consolidated documents
-- ✅ **Performance tracking** - Token usage and latency monitoring
-- ✅ **Configurable templates** - Customizable prompts and requirements
+- ✅ **Cross-meeting analysis** - Strategic insights and patterns
+- ✅ **Professional reports** - Multi-format consolidated documents
+- ✅ **Performance tracking** - Token usage and response time monitoring
+- ✅ **Flexible templates** - Customizable prompts and requirements
 
 ## Architecture
 
 ```
-VTT Files → Parser → AI Analysis → Individual Summaries
-    ↓              ↓          ↓            ↓
-Video Files → Keyframes → Global Analysis → PDF Report
+Transcript Files → Parser → AI Analysis → Individual Summaries
+       ↓             ↓          ↓              ↓
+Video Files → Screenshots → Cross-Meeting Analysis → Final Report
 ```
 
 For detailed architecture documentation, see [`architecture.md`](architecture.md).

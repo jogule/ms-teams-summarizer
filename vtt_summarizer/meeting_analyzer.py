@@ -1,13 +1,13 @@
-"""Global summary aggregation module for creating master summaries from individual meeting summaries."""
+"""Meeting analysis module for creating comprehensive analysis from individual meeting summaries."""
 
 from pathlib import Path
 from typing import List, Dict, Optional
 
 from .config import Config
-from .bedrock_client import BedrockClient
-from .summary_writer import SummaryWriter
-from .model_statistics import ModelStatisticsTracker
-from .prompt_engine import PromptEngine
+from .ai_client import AIClient
+from .file_writer import FileWriter
+from .performance_tracker import PerformanceTracker
+from .template_builder import TemplateBuilder
 from .utils import (
     parse_folder_name, 
     extract_summary_info, 
@@ -18,29 +18,29 @@ from .utils import (
 )
 
 
-class GlobalSummarizer:
-    """Creates global summaries from individual meeting summaries."""
+class MeetingAnalyzer:
+    """Creates comprehensive analysis from individual meeting summaries."""
     
-    def __init__(self, config: Config, stats_tracker: ModelStatisticsTracker = None):
+    def __init__(self, config: Config, performance_tracker: PerformanceTracker = None):
         """
-        Initialize the Global Summarizer.
+        Initialize the Meeting Analyzer.
         
         Args:
             config: Configuration object
-            stats_tracker: Optional statistics tracker for monitoring model calls
+            performance_tracker: Optional tracker for monitoring model performance
         """
         self.config = config
-        self.stats_tracker = stats_tracker
-        self.bedrock_client = BedrockClient(config, stats_tracker)
-        self.summary_writer = SummaryWriter()
-        self.prompt_engine = PromptEngine(config)
+        self.performance_tracker = performance_tracker
+        self.ai_client = AIClient(config, performance_tracker)
+        self.file_writer = FileWriter()
+        self.template_builder = TemplateBuilder(config)
         self.logger = setup_module_logger(__name__)
         
-        self.logger.info("Global Summarizer initialized")
+        self.logger.info("Meeting Analyzer initialized")
     
-    def generate_global_summary(self, output_filename: str = "GLOBAL_SUMMARY.md") -> Dict[str, any]:
+    def create_global_analysis(self, output_filename: str = "GLOBAL_ANALYSIS.md") -> Dict[str, any]:
         """
-        Generate a global summary from all individual meeting summaries.
+        Create a global analysis from all individual meeting summaries.
         
         Args:
             output_filename: Name for the global summary file
@@ -63,16 +63,16 @@ class GlobalSummarizer:
         
         self.logger.info(f"Found {len(summaries)} individual summaries to aggregate")
         
-        # Generate global summary content
+        # Generate global analysis content
         try:
-            self.logger.info("Generating global summary with Claude...")
-            with ProcessingTimer("Global summary generation") as timer:
-                global_content = self._generate_global_content(summaries)
+            self.logger.info("Creating global analysis with AI...")
+            with ProcessingTimer("Global analysis creation") as timer:
+                global_content = self._create_global_content(summaries)
             
-            self.logger.info(f"Global summary generation completed in {timer.duration_rounded}s")
+            self.logger.info(f"Global analysis creation completed in {timer.duration_rounded}s")
             
-            # Save global summary
-            self.summary_writer.write_global_summary(global_summary_path, global_content, summaries)
+            # Save global analysis
+            self.file_writer.write_global_summary(global_summary_path, global_content, summaries)
             
             return {
                 "status": "success",
@@ -139,9 +139,9 @@ class GlobalSummarizer:
     
     
     
-    def _generate_global_content(self, summaries: List[Dict]) -> str:
+    def _create_global_content(self, summaries: List[Dict]) -> str:
         """
-        Generate global summary content using Claude.
+        Create global analysis content using AI models.
         
         Args:
             summaries: List of individual summary data
@@ -149,15 +149,15 @@ class GlobalSummarizer:
         Returns:
             Generated global summary content
         """
-        # Build the prompt for global summary
-        prompt = self._build_global_summary_prompt(summaries)
+        # Build the prompt for global analysis
+        prompt = self._build_global_analysis_prompt(summaries)
         
-        # Use Claude to generate the global summary
-        return self.bedrock_client.generate_summary(prompt, "Global Walkthrough Series Analysis", "global_summary")
+        # Use AI to generate the global analysis
+        return self.ai_client.create_summary(prompt, "Global Meeting Series Analysis", "global_analysis")
     
-    def _build_global_summary_prompt(self, summaries: List[Dict]) -> str:
+    def _build_global_analysis_prompt(self, summaries: List[Dict]) -> str:
         """
-        Build the prompt for global summary generation using configurable templates.
+        Build the prompt for global analysis generation using configurable templates.
         
         Args:
             summaries: List of individual summary data
@@ -165,5 +165,5 @@ class GlobalSummarizer:
         Returns:
             Formatted prompt string
         """
-        return self.prompt_engine.build_global_summary_prompt(summaries)
+        return self.template_builder.build_global_summary_prompt(summaries)
     

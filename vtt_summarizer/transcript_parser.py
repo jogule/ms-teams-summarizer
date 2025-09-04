@@ -1,4 +1,4 @@
-"""VTT file parser for extracting transcript content."""
+"""Transcript file parser for extracting meeting content from VTT files."""
 
 import re
 import webvtt
@@ -16,22 +16,22 @@ class TranscriptSegment:
     end_time: str
     text: str
     duration_seconds: Optional[float] = None
-    original_text: Optional[str] = None  # Preserve original VTT text with speaker info
+    original_text: Optional[str] = None  # Preserve original text with speaker info
 
 
-class VTTParser:
-    """Parser for WebVTT transcript files."""
+class TranscriptParser:
+    """Parser for meeting transcript files (VTT format)."""
     
     def __init__(self):
-        """Initialize VTT parser."""
+        """Initialize transcript parser."""
         self.logger = setup_module_logger(__name__)
     
-    def parse_file(self, vtt_path: str) -> List[TranscriptSegment]:
+    def parse_file(self, transcript_path: str) -> List[TranscriptSegment]:
         """
-        Parse a VTT file and extract transcript segments.
+        Parse a transcript file and extract content segments.
         
         Args:
-            vtt_path: Path to the VTT file
+            transcript_path: Path to the transcript file
             
         Returns:
             List of TranscriptSegment objects
@@ -40,12 +40,12 @@ class VTTParser:
             FileNotFoundError: If VTT file doesn't exist
             ValueError: If VTT file is malformed
         """
-        vtt_file = Path(vtt_path)
-        if not vtt_file.exists():
-            raise FileNotFoundError(f"VTT file not found: {vtt_path}")
+        transcript_file = Path(transcript_path)
+        if not transcript_file.exists():
+            raise FileNotFoundError(f"Transcript file not found: {transcript_path}")
         
         try:
-            captions = webvtt.read(str(vtt_file))
+            captions = webvtt.read(str(transcript_file))
             segments = []
             
             for caption in captions:
@@ -66,24 +66,24 @@ class VTTParser:
                     )
                     segments.append(segment)
             
-            self.logger.info(f"Parsed {len(segments)} segments from {vtt_file.name}")
+            self.logger.info(f"Parsed {len(segments)} segments from {transcript_file.name}")
             return segments
             
         except Exception as e:
-            self.logger.error(f"Error parsing VTT file {vtt_path}: {str(e)}")
-            raise ValueError(f"Failed to parse VTT file: {str(e)}")
+            self.logger.error(f"Error parsing transcript file {transcript_path}: {str(e)}")
+            raise ValueError(f"Failed to parse transcript file: {str(e)}")
     
-    def extract_full_transcript(self, vtt_path: str) -> str:
+    def extract_full_transcript(self, transcript_path: str) -> str:
         """
-        Extract the complete transcript text from a VTT file.
+        Extract the complete transcript text from a transcript file.
         
         Args:
-            vtt_path: Path to the VTT file
+            transcript_path: Path to the transcript file
             
         Returns:
             Complete transcript as a string
         """
-        segments = self.parse_file(vtt_path)
+        segments = self.parse_file(transcript_path)
         
         # Combine all text segments
         full_text = " ".join([segment.text for segment in segments if segment.text.strip()])
@@ -93,19 +93,19 @@ class VTTParser:
         
         return full_text
     
-    def extract_transcript_with_timestamps(self, vtt_path: str, 
+    def extract_transcript_with_timestamps(self, transcript_path: str, 
                                          timestamp_interval: int = 300) -> str:
         """
         Extract transcript with periodic timestamps for reference.
         
         Args:
-            vtt_path: Path to the VTT file
+            transcript_path: Path to the transcript file
             timestamp_interval: Interval in seconds to add timestamps
             
         Returns:
             Transcript with timestamp markers
         """
-        segments = self.parse_file(vtt_path)
+        segments = self.parse_file(transcript_path)
         
         result = []
         last_timestamp_seconds = 0
@@ -122,17 +122,17 @@ class VTTParser:
         
         return " ".join(result)
     
-    def get_transcript_metadata(self, vtt_path: str) -> Dict[str, any]:
+    def get_transcript_metadata(self, transcript_path: str) -> Dict[str, any]:
         """
         Extract metadata about the transcript.
         
         Args:
-            vtt_path: Path to the VTT file
+            transcript_path: Path to the transcript file
             
         Returns:
             Dictionary with transcript metadata
         """
-        segments = self.parse_file(vtt_path)
+        segments = self.parse_file(transcript_path)
         
         if not segments:
             return {"duration_seconds": 0, "segment_count": 0, "word_count": 0}
@@ -149,7 +149,7 @@ class VTTParser:
             "segment_count": len(segments),
             "word_count": total_words,
             "estimated_speakers": len(potential_speakers),
-            "file_path": str(vtt_path)
+            "file_path": str(transcript_path)
         }
     
     def _clean_text(self, text: str) -> str:

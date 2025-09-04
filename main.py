@@ -17,7 +17,7 @@ current_dir = Path(__file__).parent
 sys.path.insert(0, str(current_dir))
 
 from vtt_summarizer.config import Config
-from vtt_summarizer.consolidated_summarizer import ConsolidatedSummarizer
+from vtt_summarizer.meeting_processor import MeetingProcessor
 
 
 def setup_logging(verbose=False):
@@ -35,7 +35,7 @@ def setup_logging(verbose=False):
         )
         
         # Set our modules to INFO level
-        for logger_name in ['vtt_summarizer.consolidated_summarizer', 'vtt_summarizer.bedrock_client', 'vtt_summarizer.global_summarizer']:
+        for logger_name in ['vtt_summarizer.meeting_processor', 'vtt_summarizer.ai_client', 'vtt_summarizer.meeting_analyzer']:
             logger = logging.getLogger(logger_name)
             logger.setLevel(logging.INFO)
         
@@ -51,7 +51,7 @@ def setup_logging(verbose=False):
         )
         
         # Suppress all module logs
-        for logger_name in ['vtt_summarizer.consolidated_summarizer', 'vtt_summarizer.bedrock_client', 'vtt_summarizer.global_summarizer', 'botocore', 'boto3', 'urllib3']:
+        for logger_name in ['vtt_summarizer.meeting_processor', 'vtt_summarizer.ai_client', 'vtt_summarizer.meeting_analyzer', 'botocore', 'boto3', 'urllib3']:
             logger = logging.getLogger(logger_name)
             logger.setLevel(logging.CRITICAL)
             logger.addHandler(logging.NullHandler())
@@ -60,12 +60,12 @@ def setup_logging(verbose=False):
 def print_header():
     """Print a simple header."""
     print("=" * 60)
-    print("🚀 VTT SUMMARIZER")
+    print("🚀 MEETING PROCESSOR")
     print("=" * 60)
     print()
 
 
-def print_results(results, config, summarizer=None):
+def print_results(results, config, processor=None):
     """Print results in a simple, clean format."""
     print()
     print("=" * 60)
@@ -134,11 +134,11 @@ def print_results(results, config, summarizer=None):
         print(f"   ❌ Failed: {pdf_result.get('error', 'Unknown error')}")
     
     # Model Statistics Summary
-    if summarizer and hasattr(summarizer, 'stats_tracker'):
-        session_stats = summarizer.stats_tracker.get_session_summary()
+    if processor and hasattr(processor, 'performance_tracker'):
+        session_stats = processor.performance_tracker.get_session_summary()
         if session_stats['total_calls'] > 0:
             print(f"\n🤖 Model Call Statistics:")
-            print(f"   🔢 Total calls: {session_stats['total_calls']} ({session_stats['individual_calls']} individual + {session_stats['global_calls']} global)")
+            print(f"   🔢 Total calls: {session_stats['total_calls']} ({session_stats['individual_calls']} individual + {session_stats['analysis_calls']} analysis)")
             print(f"   📊 Total tokens: {session_stats['total_tokens']:,}")
             if session_stats['total_input_tokens'] > 0:
                 print(f"   ⬇️  Input tokens: {session_stats['total_input_tokens']:,}")
@@ -160,7 +160,7 @@ def print_results(results, config, summarizer=None):
 def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="VTT Summarizer - Process all VTT files and generate summaries",
+        description="Meeting Processor - Process all meeting files and generate summaries",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -245,21 +245,21 @@ def main():
                 print(f"   🖼️  Image max width: {config.keyframes_image_max_width}px")
         print()
         
-        # Initialize and run summarizer
-        print("🚀 Starting VTT summarization...")
+        # Initialize and run processor
+        print("🚀 Starting meeting processing...")
         
-        summarizer = ConsolidatedSummarizer(
+        processor = MeetingProcessor(
             config,
             enable_keyframes=keyframes_enabled,
             max_keyframes=max_keyframes
         )
-        results = summarizer.summarize_all(
+        results = processor.process_meetings(
             summaries_folder=config.output_folder,
             force_overwrite=args.force
         )
         
         # Print results
-        print_results(results, config, summarizer)
+        print_results(results, config, processor)
         
         print()
         print("=" * 60)

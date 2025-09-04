@@ -1,6 +1,6 @@
-# VTT Summarizer - System Architecture
+# Meeting Processor - System Architecture
 
-This document provides a comprehensive architectural overview of the VTT Summarizer application, which processes meeting recordings (VTT files) and generates AI-powered summaries with keyframe extraction and PDF reporting capabilities.
+This document provides a comprehensive architectural overview of the Meeting Processor application, which processes meeting recordings and transcript files to generate AI-powered summaries with video screenshot extraction and comprehensive reporting capabilities.
 
 ## High-Level Architecture Diagram
 
@@ -8,68 +8,68 @@ This document provides a comprehensive architectural overview of the VTT Summari
 graph TB
     %% External Dependencies
     AWS[AWS Bedrock<br/>Claude/OpenAI Models] 
-    VTT[VTT Files<br/>+ Video Files]
+    FILES[Transcript Files<br/>+ Video Files]
     CONFIG[config.yaml<br/>Configuration]
     
     %% Main Entry Point
     MAIN[main.py<br/>CLI Entry Point]
     
     %% Core Orchestration
-    CONSOLIDATED[ConsolidatedSummarizer<br/>Main Orchestrator]
+    PROCESSOR[MeetingProcessor<br/>Main Orchestrator]
     
     %% Processing Components
-    VTT_PARSER[VTTParser<br/>Transcript Extraction]
-    BEDROCK[BedrockClient<br/>AI Model Interface]
-    KEYFRAME[KeyframeExtractor<br/>Video Processing]
+    TRANSCRIPT_PARSER[TranscriptParser<br/>Content Extraction]
+    AI_CLIENT[AIClient<br/>AI Model Interface]
+    VIDEO_PROCESSOR[VideoProcessor<br/>Video Processing]
     
     %% Analysis & Generation
-    PROMPT[PromptEngine<br/>Template Management]
-    GLOBAL[GlobalSummarizer<br/>Cross-Meeting Analysis]
-    WRITER[SummaryWriter<br/>Markdown Generation]
-    PDF[PDFGenerator<br/>Report Creation]
+    TEMPLATE[TemplateBuilder<br/>Template Management]
+    ANALYZER[MeetingAnalyzer<br/>Cross-Meeting Analysis]
+    WRITER[FileWriter<br/>File Generation]
+    REPORT[ReportGenerator<br/>Report Creation]
     
     %% Supporting Services
     CONFIG_MGR[Config<br/>Settings Manager]
-    STATS[ModelStatisticsTracker<br/>Performance Monitoring]
+    PERFORMANCE[PerformanceTracker<br/>Performance Monitoring]
     UTILS[Utils<br/>Shared Functions]
     
     %% Outputs
-    MD_SUMMARIES[Individual<br/>Markdown Summaries]
-    GLOBAL_MD[Global<br/>Summary Report]
-    KEYFRAME_IMGS[Keyframe<br/>Images]
-    PDF_REPORT[Consolidated<br/>PDF Report]
+    MD_SUMMARIES[Individual<br/>Meeting Summaries]
+    ANALYSIS_MD[Global<br/>Analysis Report]
+    SCREENSHOTS[Video<br/>Screenshots]
+    FINAL_REPORT[Comprehensive<br/>Final Report]
     
     %% Flow Connections
     MAIN --> CONFIG_MGR
-    MAIN --> CONSOLIDATED
+    MAIN --> PROCESSOR
     
     CONFIG --> CONFIG_MGR
-    VTT --> VTT_PARSER
-    AWS --> BEDROCK
+    FILES --> TRANSCRIPT_PARSER
+    AWS --> AI_CLIENT
     
-    CONSOLIDATED --> VTT_PARSER
-    CONSOLIDATED --> BEDROCK
-    CONSOLIDATED --> KEYFRAME
-    CONSOLIDATED --> GLOBAL
-    CONSOLIDATED --> PDF
-    CONSOLIDATED --> STATS
+    PROCESSOR --> TRANSCRIPT_PARSER
+    PROCESSOR --> AI_CLIENT
+    PROCESSOR --> VIDEO_PROCESSOR
+    PROCESSOR --> ANALYZER
+    PROCESSOR --> REPORT
+    PROCESSOR --> PERFORMANCE
     
-    VTT_PARSER --> UTILS
-    BEDROCK --> PROMPT
-    BEDROCK --> STATS
-    KEYFRAME --> UTILS
+    TRANSCRIPT_PARSER --> UTILS
+    AI_CLIENT --> TEMPLATE
+    AI_CLIENT --> PERFORMANCE
+    VIDEO_PROCESSOR --> UTILS
     
-    PROMPT --> CONFIG_MGR
-    GLOBAL --> BEDROCK
-    GLOBAL --> WRITER
+    TEMPLATE --> CONFIG_MGR
+    ANALYZER --> AI_CLIENT
+    ANALYZER --> WRITER
     WRITER --> UTILS
-    PDF --> WRITER
-    PDF --> UTILS
+    REPORT --> WRITER
+    REPORT --> UTILS
     
-    CONSOLIDATED --> MD_SUMMARIES
-    GLOBAL --> GLOBAL_MD
-    KEYFRAME --> KEYFRAME_IMGS
-    PDF --> PDF_REPORT
+    PROCESSOR --> MD_SUMMARIES
+    ANALYZER --> ANALYSIS_MD
+    VIDEO_PROCESSOR --> SCREENSHOTS
+    REPORT --> FINAL_REPORT
     
     %% Styling
     classDef external fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -78,11 +78,11 @@ graph TB
     classDef output fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef support fill:#f5f5f5,stroke:#424242,stroke-width:2px
     
-    class AWS,VTT,CONFIG external
-    class MAIN,CONSOLIDATED core
-    class VTT_PARSER,BEDROCK,KEYFRAME,PROMPT,GLOBAL,WRITER,PDF processing
-    class MD_SUMMARIES,GLOBAL_MD,KEYFRAME_IMGS,PDF_REPORT output
-    class CONFIG_MGR,STATS,UTILS support
+    class AWS,FILES,CONFIG external
+    class MAIN,PROCESSOR core
+    class TRANSCRIPT_PARSER,AI_CLIENT,VIDEO_PROCESSOR,TEMPLATE,ANALYZER,WRITER,REPORT processing
+    class MD_SUMMARIES,ANALYSIS_MD,SCREENSHOTS,FINAL_REPORT output
+    class CONFIG_MGR,PERFORMANCE,UTILS support
 ```
 
 ## Detailed Component Architecture
@@ -94,31 +94,31 @@ graph TD
     end
     
     subgraph "Configuration Layer"
-        CONFIG[Config<br/>• YAML configuration<br/>• AWS settings<br/>• Model parameters<br/>• Prompt templates<br/>• PDF/Keyframe settings]
+        CONFIG[Config<br/>• YAML configuration<br/>• AWS settings<br/>• Model parameters<br/>• Template definitions<br/>• Processing settings]
     end
     
     subgraph "Core Processing Layer"
-        CONSOLIDATED[ConsolidatedSummarizer<br/>• Workflow orchestration<br/>• Individual VTT processing<br/>• Global summary generation<br/>• PDF report creation<br/>• Statistics aggregation]
+        PROCESSOR[MeetingProcessor<br/>• Workflow orchestration<br/>• Individual meeting processing<br/>• Global analysis generation<br/>• Final report creation<br/>• Performance aggregation]
         
-        GLOBAL[GlobalSummarizer<br/>• Cross-meeting analysis<br/>• Strategic insights<br/>• Pattern identification<br/>• Recommendation generation]
+        ANALYZER[MeetingAnalyzer<br/>• Cross-meeting analysis<br/>• Strategic insights<br/>• Pattern identification<br/>• Recommendation generation]
     end
     
     subgraph "AI Integration Layer"
-        BEDROCK[BedrockClient<br/>• AWS Bedrock interface<br/>• Claude/OpenAI model calls<br/>• Response parsing<br/>• Error handling & retries<br/>• Rate limit management]
+        AI_CLIENT[AIClient<br/>• AWS Bedrock interface<br/>• Claude/OpenAI model calls<br/>• Response parsing<br/>• Error handling & retries<br/>• Rate limit management]
         
-        PROMPT[PromptEngine<br/>• Template substitution<br/>• Dynamic prompt building<br/>• Configurable requirements<br/>• Context injection]
+        TEMPLATE[TemplateBuilder<br/>• Template substitution<br/>• Dynamic prompt building<br/>• Configurable requirements<br/>• Context injection]
         
-        STATS[ModelStatisticsTracker<br/>• Token usage tracking<br/>• Latency monitoring<br/>• Cost estimation<br/>• Performance analytics]
+        PERFORMANCE[PerformanceTracker<br/>• Token usage tracking<br/>• Response time monitoring<br/>• Cost estimation<br/>• Performance analytics]
     end
     
     subgraph "Data Processing Layer"
-        VTT_PARSER[VTTParser<br/>• WebVTT file parsing<br/>• Transcript extraction<br/>• Metadata extraction<br/>• Speaker identification<br/>• Timeline processing]
+        TRANSCRIPT_PARSER[TranscriptParser<br/>• Meeting file parsing<br/>• Content extraction<br/>• Metadata extraction<br/>• Speaker identification<br/>• Timeline processing]
         
-        KEYFRAME[KeyframeExtractor<br/>• Video frame extraction<br/>• Relevance scoring<br/>• Intelligent timing delays<br/>• Image optimization<br/>• Context window analysis]
+        VIDEO_PROCESSOR[VideoProcessor<br/>• Video screenshot extraction<br/>• Relevance scoring<br/>• Intelligent timing delays<br/>• Image optimization<br/>• Context window analysis]
         
-        WRITER[SummaryWriter<br/>• Markdown generation<br/>• Keyframe embedding<br/>• Metadata formatting<br/>• Content structuring]
+        WRITER[FileWriter<br/>• Document generation<br/>• Screenshot embedding<br/>• Metadata formatting<br/>• Content structuring]
         
-        PDF[PDFGenerator<br/>• Consolidated markdown<br/>• PDF conversion<br/>• Table of contents<br/>• Multi-converter support<br/>• Image integration]
+        REPORT[ReportGenerator<br/>• Consolidated documents<br/>• Multi-format conversion<br/>• Table of contents<br/>• Multi-converter support<br/>• Image integration]
     end
     
     subgraph "Utility Layer"
@@ -126,28 +126,28 @@ graph TD
     end
     
     %% Connections
-    MAIN --> CONSOLIDATED
+    MAIN --> PROCESSOR
     MAIN --> CONFIG
     
-    CONSOLIDATED --> VTT_PARSER
-    CONSOLIDATED --> BEDROCK
-    CONSOLIDATED --> KEYFRAME
-    CONSOLIDATED --> GLOBAL
-    CONSOLIDATED --> PDF
-    CONSOLIDATED --> STATS
+    PROCESSOR --> TRANSCRIPT_PARSER
+    PROCESSOR --> AI_CLIENT
+    PROCESSOR --> VIDEO_PROCESSOR
+    PROCESSOR --> ANALYZER
+    PROCESSOR --> REPORT
+    PROCESSOR --> PERFORMANCE
     
-    GLOBAL --> BEDROCK
-    GLOBAL --> WRITER
+    ANALYZER --> AI_CLIENT
+    ANALYZER --> WRITER
     
-    BEDROCK --> PROMPT
-    BEDROCK --> STATS
+    AI_CLIENT --> TEMPLATE
+    AI_CLIENT --> PERFORMANCE
     
-    VTT_PARSER --> UTILS
-    KEYFRAME --> UTILS
+    TRANSCRIPT_PARSER --> UTILS
+    VIDEO_PROCESSOR --> UTILS
     WRITER --> UTILS
-    PDF --> UTILS
+    REPORT --> UTILS
     
-    PROMPT --> CONFIG
+    TEMPLATE --> CONFIG
     
     %% Styling
     classDef entry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
@@ -159,9 +159,9 @@ graph TD
     
     class MAIN entry
     class CONFIG config
-    class CONSOLIDATED,GLOBAL core
-    class BEDROCK,PROMPT,STATS ai
-    class VTT_PARSER,KEYFRAME,WRITER,PDF data
+    class PROCESSOR,ANALYZER core
+    class AI_CLIENT,TEMPLATE,PERFORMANCE ai
+    class TRANSCRIPT_PARSER,VIDEO_PROCESSOR,WRITER,REPORT data
     class UTILS util
 ```
 
@@ -171,47 +171,47 @@ graph TD
 sequenceDiagram
     participant USER as User
     participant MAIN as main.py
-    participant CONS as ConsolidatedSummarizer
-    participant VTT as VTTParser
-    participant KEY as KeyframeExtractor
-    participant BED as BedrockClient
-    participant GLOB as GlobalSummarizer
-    participant PDF as PDFGenerator
+    participant PROC as MeetingProcessor
+    participant TRANS as TranscriptParser
+    participant VIDEO as VideoProcessor
+    participant AI as AIClient
+    participant ANALYZER as MeetingAnalyzer
+    participant REPORT as ReportGenerator
     participant AWS as AWS Bedrock
     
     USER->>MAIN: Run command with args
-    MAIN->>CONS: Initialize with config
+    MAIN->>PROC: Initialize with config
     
-    loop For each VTT folder
-        CONS->>VTT: Parse VTT file
-        VTT-->>CONS: Transcript + metadata
+    loop For each meeting folder
+        PROC->>TRANS: Parse transcript file
+        TRANS-->>PROC: Content + metadata
         
-        opt If keyframes enabled
-            CONS->>KEY: Extract keyframes
-            KEY-->>CONS: Keyframe images + metadata
+        opt If video processing enabled
+            PROC->>VIDEO: Extract screenshots
+            VIDEO-->>PROC: Screenshot images + metadata
         end
         
-        CONS->>BED: Generate individual summary
-        BED->>AWS: API call with transcript
-        AWS-->>BED: AI-generated summary
-        BED-->>CONS: Formatted summary
+        PROC->>AI: Create individual summary
+        AI->>AWS: API call with content
+        AWS-->>AI: AI-generated summary
+        AI-->>PROC: Formatted summary
         
-        CONS->>CONS: Save individual summary
+        PROC->>PROC: Save individual summary
     end
     
-    CONS->>GLOB: Generate global summary
-    GLOB->>BED: Consolidate all summaries
-    BED->>AWS: API call with all summaries
-    AWS-->>BED: Global analysis
-    BED-->>GLOB: Global summary
-    GLOB-->>CONS: Global summary file
+    PROC->>ANALYZER: Create global analysis
+    ANALYZER->>AI: Consolidate all summaries
+    AI->>AWS: API call with all summaries
+    AWS-->>AI: Global analysis
+    AI-->>ANALYZER: Analysis content
+    ANALYZER-->>PROC: Global analysis file
     
-    CONS->>PDF: Generate PDF report
-    PDF->>PDF: Create consolidated markdown
-    PDF->>PDF: Convert to PDF
-    PDF-->>CONS: PDF report
+    PROC->>REPORT: Generate final report
+    REPORT->>REPORT: Create consolidated document
+    REPORT->>REPORT: Convert to multiple formats
+    REPORT-->>PROC: Final comprehensive report
     
-    CONS-->>MAIN: Complete results
+    PROC-->>MAIN: Complete results
     MAIN-->>USER: Status and summary
 ```
 
@@ -230,38 +230,38 @@ graph LR
         INIT[__init__.py]
         
         subgraph "Core Modules"
-            CONSOLIDATED_PY[consolidated_summarizer.py<br/>Main orchestrator]
+            PROCESSOR_PY[meeting_processor.py<br/>Main orchestrator]
             CONFIG_PY[config.py<br/>Configuration manager]
             UTILS_PY[utils.py<br/>Shared utilities]
         end
         
         subgraph "AI Integration"
-            BEDROCK_PY[bedrock_client.py<br/>AWS interface]
-            PROMPT_PY[prompt_engine.py<br/>Template engine]
-            STATS_PY[model_statistics.py<br/>Tracking]
+            AI_PY[ai_client.py<br/>AI interface]
+            TEMPLATE_PY[template_builder.py<br/>Template engine]
+            PERFORMANCE_PY[performance_tracker.py<br/>Performance tracking]
         end
         
         subgraph "Data Processing"
-            VTT_PY[vtt_parser.py<br/>Transcript parsing]
-            KEYFRAME_PY[keyframe_extractor.py<br/>Video processing]
-            WRITER_PY[summary_writer.py<br/>File output]
-            PDF_PY[pdf_generator.py<br/>PDF creation]
+            TRANSCRIPT_PY[transcript_parser.py<br/>Content parsing]
+            VIDEO_PY[video_processor.py<br/>Video processing]
+            WRITER_PY[file_writer.py<br/>File output]
+            REPORT_PY[report_generator.py<br/>Report creation]
         end
         
         subgraph "Analysis"
-            GLOBAL_PY[global_summarizer.py<br/>Cross-meeting analysis]
+            ANALYZER_PY[meeting_analyzer.py<br/>Cross-meeting analysis]
         end
     end
     
     subgraph "Input/Output"
-        INPUTS[inputs/<br/>VTT + Video files]
-        OUTPUTS[outputs/<br/>Generated summaries<br/>Keyframe images<br/>PDF reports]
+        INPUTS[inputs/<br/>Transcript + Video files]
+        OUTPUTS[outputs/<br/>Generated summaries<br/>Video screenshots<br/>Comprehensive reports]
     end
     
-    MAIN_PY --> CONSOLIDATED_PY
+    MAIN_PY --> PROCESSOR_PY
     CONFIG_YAML --> CONFIG_PY
-    INPUTS --> VTT_PY
-    CONSOLIDATED_PY --> OUTPUTS
+    INPUTS --> TRANSCRIPT_PY
+    PROCESSOR_PY --> OUTPUTS
     
     %% Styling
     classDef root fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
@@ -272,10 +272,10 @@ graph LR
     classDef io fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     
     class MAIN_PY,CONFIG_YAML,REQ,TESTS root
-    class CONSOLIDATED_PY,CONFIG_PY,UTILS_PY core
-    class BEDROCK_PY,PROMPT_PY,STATS_PY ai
-    class VTT_PY,KEYFRAME_PY,WRITER_PY,PDF_PY data
-    class GLOBAL_PY analysis
+    class PROCESSOR_PY,CONFIG_PY,UTILS_PY core
+    class AI_PY,TEMPLATE_PY,PERFORMANCE_PY ai
+    class TRANSCRIPT_PY,VIDEO_PY,WRITER_PY,REPORT_PY data
+    class ANALYZER_PY analysis
     class INPUTS,OUTPUTS io
 ```
 
@@ -285,23 +285,49 @@ graph LR
 - **AI Models**: AWS Bedrock (Claude, OpenAI GPT models)
 - **Video Processing**: OpenCV, PIL (Pillow)
 - **Document Processing**: WebVTT-py, PyYAML
-- **PDF Generation**: Pandoc, WeasyPrint, or wkhtmltopdf
+- **Report Generation**: Pandoc, WeasyPrint, or wkhtmltopdf
 - **Configuration**: YAML-based configuration system
 - **Dependencies Management**: pip with requirements.txt
 
 ## Key Design Patterns
 
-1. **Orchestrator Pattern**: `ConsolidatedSummarizer` coordinates all processing steps
-2. **Strategy Pattern**: Multiple PDF converters with fallback options
+1. **Orchestrator Pattern**: `MeetingProcessor` coordinates all processing steps
+2. **Strategy Pattern**: Multiple report converters with fallback options
 3. **Template Pattern**: Configurable prompt templates for different AI models
-4. **Observer Pattern**: Statistics tracking across all model calls
+4. **Observer Pattern**: Performance tracking across all model calls
 5. **Factory Pattern**: Dynamic model client creation based on configuration
 6. **Chain of Responsibility**: Error handling with retries and fallbacks
 
-## Scalability Considerations
+## Naming Improvements Applied
 
-- Configurable processing limits and timeouts
-- Intelligent rate limiting for API calls
-- Modular architecture allows easy component replacement
-- Statistics tracking for performance monitoring
-- Extensive error handling and recovery mechanisms
+### Key Changes Made:
+- **ConsolidatedSummarizer** → **MeetingProcessor** (clearer main responsibility)
+- **BedrockClient** → **AIClient** (less vendor-specific)
+- **GlobalSummarizer** → **MeetingAnalyzer** (better describes cross-meeting analysis)
+- **ModelStatisticsTracker** → **PerformanceTracker** (simpler, broader scope)
+- **KeyframeExtractor** → **VideoProcessor** (broader video processing capabilities)
+- **VTTParser** → **TranscriptParser** (less abbreviation-dependent)
+- **SummaryWriter** → **FileWriter** (generic file operations)
+- **PDFGenerator** → **ReportGenerator** (multi-format support)
+- **PromptEngine** → **TemplateBuilder** (clearer template focus)
+
+### Method Naming Improvements:
+- **summarize_all()** → **process_meetings()** (clearer action)
+- **_invoke_model_with_stats()** → **_call_ai_model()** (simpler)
+- **generate_summary()** → **create_summary()** (more direct)
+- **extract_keyframes()** → **extract_keyframes()** (kept, but context improved)
+
+### Variable Naming Improvements:
+- **vtt_folders** → **meeting_folders** (domain language)
+- **keyframes** → **video_screenshots** (more descriptive)
+- **global_summary** → **global_analysis** (better describes cross-meeting insights)
+- **stats_tracker** → **performance_tracker** (clearer purpose)
+
+## Benefits of New Naming Scheme
+
+1. **Improved Readability**: Code intentions are clearer
+2. **Domain Alignment**: Better matches business language
+3. **Reduced Cognitive Load**: Less technical jargon
+4. **Easier Onboarding**: New developers can understand purpose faster
+5. **Better Maintainability**: Changes are easier to locate and understand
+6. **Future-Proof**: Names accommodate potential feature expansions

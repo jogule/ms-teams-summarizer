@@ -1,4 +1,4 @@
-"""Keyframe extraction from video files using VTT transcript timeline."""
+"""Video processing for extracting key frames from meeting recordings using transcript timeline."""
 
 import cv2
 import os
@@ -10,12 +10,12 @@ from PIL import Image
 import numpy as np
 
 from .utils import time_to_seconds, setup_module_logger
-from .vtt_parser import TranscriptSegment
+from .transcript_parser import TranscriptSegment
 
 
 @dataclass
-class KeyframeCandidate:
-    """Represents a potential keyframe with relevance scoring."""
+class ScreenshotCandidate:
+    """Represents a potential video screenshot with relevance scoring."""
     timestamp_seconds: float
     timestamp_formatted: str
     relevance_score: float
@@ -26,7 +26,7 @@ class KeyframeCandidate:
 
 @dataclass
 class ExtractedKeyframe:
-    """Represents a successfully extracted keyframe."""
+    """Represents a successfully extracted video screenshot."""
     timestamp_seconds: float
     timestamp_formatted: str
     image_path: str
@@ -34,8 +34,8 @@ class ExtractedKeyframe:
     relevance_score: float
 
 
-class KeyframeExtractor:
-    """Extracts relevant keyframes from video files based on VTT transcript analysis."""
+class VideoProcessor:
+    """Extracts relevant screenshots from video files based on transcript analysis."""
     
     def __init__(self, max_frames: int = 5, min_relevance_score: float = 0.3, 
                  custom_delays: Dict[str, float] = None, image_max_width: int = 1200,
@@ -144,7 +144,7 @@ class KeyframeExtractor:
         self.logger.info(f"Successfully extracted {len(extracted_frames)} keyframes from {Path(video_path).name}")
         return extracted_frames
     
-    def _analyze_transcript_for_keyframes(self, segments: List[TranscriptSegment]) -> List[KeyframeCandidate]:
+    def _analyze_transcript_for_keyframes(self, segments: List[TranscriptSegment]) -> List[ScreenshotCandidate]:
         """
         Analyze transcript segments to identify potential keyframes.
         
@@ -152,7 +152,7 @@ class KeyframeExtractor:
             segments: List of transcript segments
             
         Returns:
-            List of keyframe candidates with relevance scores
+            List of screenshot candidates with relevance scores
         """
         candidates = []
         
@@ -172,7 +172,7 @@ class KeyframeExtractor:
                 # Extract enhanced context text using the context window
                 enhanced_context = self._extract_context_window(i, segments)
                 
-                candidate = KeyframeCandidate(
+                candidate = ScreenshotCandidate(
                     timestamp_seconds=adjusted_timestamp,
                     timestamp_formatted=segment.start_time,
                     relevance_score=score,
@@ -358,7 +358,7 @@ class KeyframeExtractor:
         except (ValueError, IndexError):
             return timestamp
     
-    def _select_best_candidates(self, candidates: List[KeyframeCandidate]) -> List[KeyframeCandidate]:
+    def _select_best_candidates(self, candidates: List[ScreenshotCandidate]) -> List[ScreenshotCandidate]:
         """
         Select the best keyframe candidates, avoiding temporal clustering.
         
@@ -395,14 +395,14 @@ class KeyframeExtractor:
         self.logger.info(f"Selected {len(selected)} keyframes from {len(candidates)} candidates")
         return selected
     
-    def _extract_frames_from_video(self, video_path: str, candidates: List[KeyframeCandidate], 
+    def _extract_frames_from_video(self, video_path: str, candidates: List[ScreenshotCandidate], 
                                   output_dir: str, base_filename: str) -> List[ExtractedKeyframe]:
         """
         Extract actual frames from video file.
         
         Args:
             video_path: Path to video file
-            candidates: Selected keyframe candidates
+            candidates: Selected screenshot candidates
             output_dir: Output directory for images
             base_filename: Base filename for images
             

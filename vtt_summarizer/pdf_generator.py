@@ -205,11 +205,15 @@ class PDFGenerator:
         if self.config.pdf_include_table_of_contents:
             content_parts.append("## Table of Contents")
             content_parts.append("")
-            content_parts.append("1. [Global Summary](#global-summary)")
-            for i, summary in enumerate(sorted_summaries, 2):
+            global_summary_slug = self._generate_markdown_slug("Global Summary")
+            content_parts.append(f"1. [Global Summary](#{global_summary_slug})")
+            for i, summary in enumerate(sorted_summaries, 1):
                 topic = self._extract_meeting_topic(summary)
-                safe_topic = topic.lower().replace(' ', '-').replace(':', '').replace(',', '')
-                content_parts.append(f"{i}. [{topic}](#{safe_topic})")
+                # Generate slug that matches the actual chapter heading "Chapter X: Topic"
+                chapter_title = f"Chapter {i}: {topic}"
+                safe_slug = self._generate_markdown_slug(chapter_title)
+                # Use i+1 for TOC numbering since Global Summary takes position 1
+                content_parts.append(f"{i+1}. [{topic}](#{safe_slug})")
             content_parts.append("")
             content_parts.append("---")
             content_parts.append("")
@@ -486,3 +490,33 @@ class PDFGenerator:
                     return topic
         
         return None
+    
+    def _generate_markdown_slug(self, text: str) -> str:
+        """
+        Generate markdown-compatible slug from text that matches how 
+        markdown processors create anchor IDs from headings.
+        
+        Args:
+            text: The heading text to convert to a slug
+            
+        Returns:
+            URL-safe slug string
+        """
+        import re
+        
+        # Convert to lowercase
+        slug = text.lower()
+        
+        # Replace spaces with hyphens
+        slug = re.sub(r'\s+', '-', slug)
+        
+        # Remove or replace special characters (keep alphanumeric and hyphens)
+        slug = re.sub(r'[^a-z0-9-]', '', slug)
+        
+        # Remove multiple consecutive hyphens
+        slug = re.sub(r'-+', '-', slug)
+        
+        # Remove leading/trailing hyphens
+        slug = slug.strip('-')
+        
+        return slug

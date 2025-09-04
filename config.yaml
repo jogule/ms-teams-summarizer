@@ -64,7 +64,7 @@ prompts:
   # Individual meeting summary prompt template
   individual_summary:
     # Main instruction template with placeholders
-    instruction: "Please analyze the following meeting transcript and create a {summary_style} summary."
+    instruction: "As a DevOps engineer expert, analyze the following meeting transcript and create a {summary_style} summary with focus in DevOps process improvement"
     
     # Requirements that can be conditionally included
     requirements:
@@ -79,7 +79,7 @@ prompts:
     
     # Formatting instructions
     format_instructions: |
-      Please format the summary in clear Markdown with appropriate headers and bullet points.
+      Format the summary in clear Markdown with appropriate headers and bullet points.
       Focus on technical accuracy and ensure all important information is captured.
     
     # Template structure
@@ -97,7 +97,7 @@ prompts:
   # Global summary prompt template
   global_summary:
     # Main instruction for global analysis
-    instruction: "Please analyze the following series of technical walkthrough meetings and create a comprehensive global summary."
+    instruction: "As a DevOps engineer expert, analyze the following series of technical walkthrough meetings and create a comprehensive global summary with focus in DevOps process improvement"
     
     # Required sections for global summary
     required_sections:

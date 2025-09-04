@@ -60,6 +60,15 @@ class AIClient:
         """
         return self.config.bedrock_model_id.startswith('openai.')
     
+    def _is_deepseek_model(self) -> bool:
+        """
+        Check if the configured model is a DeepSeek model.
+        
+        Returns:
+            True if the model is a DeepSeek model
+        """
+        return self.config.bedrock_model_id.startswith('deepseek.') or self.config.bedrock_model_id.startswith('us.deepseek.')
+    
     def create_summary(self, transcript: str, meeting_context: Optional[str] = None, 
                       stats_context: Optional[str] = None) -> str:
         """
@@ -186,6 +195,17 @@ class AIClient:
                 "max_completion_tokens": self.config.bedrock_max_tokens,
                 "temperature": self.config.bedrock_temperature
             }
+        elif self._is_deepseek_model():
+            request_body = {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "max_tokens": self.config.bedrock_max_tokens,
+                "temperature": self.config.bedrock_temperature
+            }
         else:
             raise ValueError(f"Unsupported model type: {self.config.bedrock_model_id}")
         
@@ -252,6 +272,20 @@ class AIClient:
                         raise ValueError("Invalid OpenAI response format")
                 else:
                     raise ValueError("No choices in OpenAI response")
+            elif self._is_deepseek_model():
+                # DeepSeek response format (similar to OpenAI/ChatGPT format)
+                if 'choices' not in response_body or not response_body['choices']:
+                    raise ValueError("Invalid response from Bedrock: no choices")
+                
+                choices = response_body['choices']
+                if isinstance(choices, list) and len(choices) > 0:
+                    choice = choices[0]
+                    if 'message' in choice and 'content' in choice['message']:
+                        summary_text = choice['message']['content']
+                    else:
+                        raise ValueError("Invalid DeepSeek response format")
+                else:
+                    raise ValueError("No choices in DeepSeek response")
             else:
                 raise ValueError(f"Unsupported model type for response parsing: {self.config.bedrock_model_id}")
             

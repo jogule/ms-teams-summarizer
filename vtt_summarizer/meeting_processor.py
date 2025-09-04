@@ -327,8 +327,8 @@ class MeetingProcessor:
             meeting_context = extract_meeting_context(folder_name, metadata)
             
             # Generate summary
-            print(f"   🤖 Generating summary with Claude...")
-            self.logger.info("Generating summary with Claude...")
+            print(f"   🤖 Generating summary with Model...")
+            self.logger.info("Generating summary with Model...")
             start_time = time.time()
             
             summary = self.ai_client.create_summary(transcript, meeting_context, folder_name)
@@ -419,8 +419,8 @@ class MeetingProcessor:
         self.logger.info(f"Found {len(summaries)} individual summaries to aggregate")
         
         try:
-            print(f"   🤖 Generating global summary with Claude...")
-            self.logger.info("Generating global summary with Claude...")
+            print(f"   🤖 Generating global summary with Model...")
+            self.logger.info("Generating global summary with Model...")
             with ProcessingTimer("Global summary generation") as timer:
                 global_content = self.meeting_analyzer._create_global_content(summaries)
             
